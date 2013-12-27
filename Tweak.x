@@ -81,7 +81,7 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	// Parse response
 	if (!err) {
 		_rocketbootstrap_lookup_response_t *response = (_rocketbootstrap_lookup_response_t *)message;
-		if (response->body->msgh_descriptor_count)
+		if (response->body.msgh_descriptor_count)
 			*sp = response->response_port.name;
 		else
 			err = 1;
