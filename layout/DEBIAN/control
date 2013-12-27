@@ -1,0 +1,9 @@
+Package: com.rpetrich.rocketbootstrap
+Priority: optional
+Section: Tweaks
+Architecture: iphoneos-arm
+Version: 0.1
+Description: Enable bootstrap services on iOS 7
+Name: RocketBootstrap
+Depends: firmware (>= 3), mobilesubstrate
+Author: Ryan Petrich
