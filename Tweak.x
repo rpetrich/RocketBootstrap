@@ -12,6 +12,7 @@
 
 #import <mach/mach.h>
 #import <substrate.h>
+#import <libkern/OSAtomic.h>
 
 static inline bool rocketbootstrap_is_passthrough(void)
 {
@@ -33,9 +34,12 @@ typedef struct {
 	mach_msg_port_descriptor_t response_port;
 } _rocketbootstrap_lookup_response_t;
 
+static NSMutableSet *allowedNames;
+static volatile OSSpinLock namesLock;
+
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
 {
-	if (rocketbootstrap_is_passthrough() || %c(SBUserNotificationCenter)) {
+	if (rocketbootstrap_is_passthrough() || allowedNames) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
 			int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
 			if (sandbox_result) {
@@ -87,6 +91,19 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 
 // SpringBoard
 
+kern_return_t rocketbootstrap_unlock(const name_t service_name)
+{
+	if (allowedNames) {
+		NSString *string = [[NSString alloc] initWithUTF8String:service_name];
+		OSSpinLockLock(&namesLock);
+		[allowedNames addObject:string];
+		OSSpinLockUnlock(&namesLock);
+		[string release];
+		return 0;
+	}
+	return 1;
+}
+
 static CFMachPortCallBack originalCallout;
 
 static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
@@ -105,10 +122,16 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 		// Lookup service
 		mach_port_t servicePort = MACH_PORT_NULL;
 		mach_port_t selfTask = mach_task_self();
-		mach_port_t bootstrap = MACH_PORT_NULL;
-		kern_return_t err = task_get_bootstrap_port(selfTask, &bootstrap);
-		if (!err) {
-			bootstrap_look_up(bootstrap, [name UTF8String], &servicePort);
+		OSSpinLockLock(&namesLock);
+		BOOL nameIsAllowed = [allowedNames containsObject:name];
+		OSSpinLockUnlock(&namesLock);
+		kern_return_t err;
+		if (nameIsAllowed) {
+			mach_port_t bootstrap = MACH_PORT_NULL;
+			err = task_get_bootstrap_port(selfTask, &bootstrap);
+			if (!err) {
+				bootstrap_look_up(bootstrap, [name UTF8String], &servicePort);
+			}
 		}
 		[name release];
 		// Generate response
@@ -183,6 +206,7 @@ static CFMachPortRef $CFMachPortCreateWithPort (
 {
 	%init();
 	if (%c(SBUserNotificationCenter)) {
+		allowedNames = [[NSMutableSet alloc] init];
 		MSHookFunction(CFMachPortCreateWithPort, $CFMachPortCreateWithPort, (void **)&_CFMachPortCreateWithPort);
 	}
 }
