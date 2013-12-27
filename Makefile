@@ -16,3 +16,7 @@ THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Develope
 
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk
+
+stage::
+	mkdir -p "$(THEOS_STAGING_DIR)/usr/include"
+	cp -a rocketbootstrap.h "$(THEOS_STAGING_DIR)/usr/include"

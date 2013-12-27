@@ -1,3 +1,5 @@
+#import <bootstrap.h>
+
 #import "rocketbootstrap.h"
 
 #ifndef __APPLE_API_PRIVATE
