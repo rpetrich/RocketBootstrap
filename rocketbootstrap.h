@@ -1,5 +1,5 @@
 #include <mach/mach.h>
-#include <bootstrap.h>
+#include "bootstrap.h"
 
 #ifndef ROCKETBOOTSTRAP_LOAD_DYNAMIC
 
