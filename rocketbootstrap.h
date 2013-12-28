@@ -5,8 +5,13 @@
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp);
 
-// SpringBoard-only
-kern_return_t rocketbootstrap_unlock(const name_t service_name);
+
+kern_return_t rocketbootstrap_unlock(const name_t service_name); // SpringBoard-only
+
+#ifdef __OBJC__
+@class CPDistributedMessagingCenter;
+void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCenter *messaging_center);
+#endif
 
 #else
 
@@ -39,5 +44,22 @@ static kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	}
 	return impl(service_name);
 }
+
+#ifdef __OBJC__
+@class CPDistributedMessagingCenter;
+__attribute__((unused))
+static void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCenter *messaging_center)
+{
+	static void (*impl)(CPDistributedMessagingCenter *messagingCenter);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
+		if (!impl)
+			return;
+	}
+	impl(messaging_center);
+}
+#endif
 
 #endif
