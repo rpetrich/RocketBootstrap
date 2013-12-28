@@ -1,1 +1,1 @@
-Filter = {Bundles = ("com.apple.springboard");};
+Filter = {Bundles = ("com.apple.springboard");CoreFoundationVersion = (800.00);};
