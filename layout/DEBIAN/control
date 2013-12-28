@@ -3,7 +3,7 @@ Priority: optional
 Section: Tweaks
 Architecture: iphoneos-arm
 Version: 0.1
-Description: Enable bootstrap services on iOS 7
+Description: Mach lookup support library for inter-process communication on iOS 7
 Name: RocketBootstrap
 Depends: firmware (>= 3), mobilesubstrate
 Tag: purpose::extension, role::developer
