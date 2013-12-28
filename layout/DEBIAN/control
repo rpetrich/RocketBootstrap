@@ -6,4 +6,5 @@ Version: 0.1
 Description: Enable bootstrap services on iOS 7
 Name: RocketBootstrap
 Depends: firmware (>= 3), mobilesubstrate
+Tag: purpose::extension, role::developer
 Author: Ryan Petrich
