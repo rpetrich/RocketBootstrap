@@ -76,7 +76,7 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	message->head.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
 	message->name_length = service_name_size;
 	memcpy(&message->name[0], service_name, service_name_size);
-	err = mach_msg(&message->head, MACH_SEND_MSG | MACH_RCV_MSG, size, size, replyPort, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
+	err = mach_msg(&message->head, MACH_SEND_MSG | MACH_RCV_MSG | MACH_RCV_TIMEOUT, size, size, replyPort, 200, MACH_PORT_NULL);
 	// Parse response
 	if (!err) {
 		_rocketbootstrap_lookup_response_t *response = (_rocketbootstrap_lookup_response_t *)message;
