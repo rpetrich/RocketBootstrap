@@ -2,7 +2,7 @@ Package: com.rpetrich.rocketbootstrap
 Priority: optional
 Section: Tweaks
 Architecture: iphoneos-arm
-Version: 0.2
+Version: 0.3
 Description: Mach lookup support library for inter-process communication on iOS 7
 Name: RocketBootstrap
 Depends: firmware (>= 3), mobilesubstrate
