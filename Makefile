@@ -20,3 +20,4 @@ include framework/makefiles/library.mk
 stage::
 	mkdir -p "$(THEOS_STAGING_DIR)/usr/include"
 	cp -a rocketbootstrap.h "$(THEOS_STAGING_DIR)/usr/include"
+	plutil -convert binary1 "$(THEOS_STAGING_DIR)/Library/MobileSubstrate/DynamicLibraries/RocketBootstrap.plist"
