@@ -106,6 +106,16 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	return 1;
 }
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp)
+{
+	kern_return_t err = rocketbootstrap_unlock(service_name);
+	if (err)
+		return err;
+	return bootstrap_register(bp, service_name, sp);
+}
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"
+
 static CFMachPortCallBack originalCallout;
 
 static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)

@@ -7,6 +7,7 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 
 
 kern_return_t rocketbootstrap_unlock(const name_t service_name); // SpringBoard-only
+kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp); // SpringBoard-only
 
 #ifdef __OBJC__
 @class CPDistributedMessagingCenter;
@@ -44,6 +45,23 @@ static kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	}
 	return impl(service_name);
 }
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+__attribute__((unused))
+kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp)
+{
+	static kern_return_t (*impl)(mach_port_t bp, name_t service_name, mach_port_t sp);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_register");
+		if (!impl)
+			impl = bootstrap_register;
+	}
+	return impl(bp, service_name, sp);
+}
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"
+
 
 #ifdef __OBJC__
 @class CPDistributedMessagingCenter;
