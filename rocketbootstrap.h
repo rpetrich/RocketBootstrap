@@ -48,7 +48,7 @@ static kern_return_t rocketbootstrap_unlock(const name_t service_name)
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 __attribute__((unused))
-kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp)
+static kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp)
 {
 	static kern_return_t (*impl)(mach_port_t bp, name_t service_name, mach_port_t sp);
 	if (!impl) {
