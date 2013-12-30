@@ -175,30 +175,41 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	}
 }
 
-static CFMachPortRef (*_CFMachPortCreateWithPort) (
-   CFAllocatorRef allocator,
-   mach_port_t portNum,
-   CFMachPortCallBack callout,
-   CFMachPortContext *context,
-   Boolean *shouldFreeInfo
+CFMachPortRef _CFMachPortCreateWithPort2(
+	CFAllocatorRef allocator,
+	mach_port_t port,
+	CFMachPortCallBack callout,
+	CFMachPortContext *context,
+	Boolean *shouldFreeInfo,
+	Boolean deathWatch
+);
+
+static CFMachPortRef (*__CFMachPortCreateWithPort2) (
+	CFAllocatorRef allocator,
+	mach_port_t port,
+	CFMachPortCallBack callout,
+	CFMachPortContext *context,
+	Boolean *shouldFreeInfo,
+	Boolean deathWatch
 );
 
 static volatile NSInteger replacing;
 static volatile CFRunLoopRef targetRunLoop;
 
-static CFMachPortRef $CFMachPortCreateWithPort (
-   CFAllocatorRef allocator,
-   mach_port_t portNum,
-   CFMachPortCallBack callout,
-   CFMachPortContext *context,
-   Boolean *shouldFreeInfo
+static CFMachPortRef $_CFMachPortCreateWithPort2 (
+	CFAllocatorRef allocator,
+	mach_port_t port,
+	CFMachPortCallBack callout,
+	CFMachPortContext *context,
+	Boolean *shouldFreeInfo,
+	Boolean deathWatch
 ) {
 	if (replacing && targetRunLoop == CFRunLoopGetCurrent()) {
 		targetRunLoop = NULL;
 		originalCallout = callout;
 		callout = machPortCallback;
 	}
-	return _CFMachPortCreateWithPort(allocator, portNum, callout, context, shouldFreeInfo);
+	return __CFMachPortCreateWithPort2(allocator, port, callout, context, shouldFreeInfo, deathWatch);
 }
 
 %hook SBUserNotificationCenter
@@ -274,6 +285,6 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 	%init();
 	if (%c(SBUserNotificationCenter)) {
 		allowedNames = [[NSMutableSet alloc] init];
-		MSHookFunction(CFMachPortCreateWithPort, $CFMachPortCreateWithPort, (void **)&_CFMachPortCreateWithPort);
+		MSHookFunction(_CFMachPortCreateWithPort2, $_CFMachPortCreateWithPort2, (void **)&__CFMachPortCreateWithPort2);
 	}
 }
