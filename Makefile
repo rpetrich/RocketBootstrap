@@ -5,7 +5,7 @@ librocketbootstrap_FRAMEWORKS = Foundation
 
 ADDITIONAL_CFLAGS = -std=c99
 
-IPHONE_ARCHS = armv6 armv7 armv7s # arm64
+IPHONE_ARCHS = armv6 armv7 armv7s arm64
 
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = 7.0
