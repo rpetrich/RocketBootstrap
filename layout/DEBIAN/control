@@ -1,7 +1,7 @@
 Package: com.rpetrich.rocketbootstrap
-Depends: mobilesubstrate, firmware (>= 3.0)
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 3.0)
 Name: RocketBootstrap
-Version: 0.3
+Version: 1.0
 Architecture: iphoneos-arm
 Description: mach lookup support library for iOS 7
 Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=rocketbootstrapDp
