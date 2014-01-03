@@ -1,5 +1,8 @@
+#include <sys/cdefs.h>
 #include <mach/mach.h>
 #include "bootstrap.h"
+
+__BEGIN_DECLS
 
 #ifndef ROCKETBOOTSTRAP_LOAD_DYNAMIC
 
@@ -79,5 +82,7 @@ static void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessag
 	impl(messaging_center);
 }
 #endif
+
+__END_DECLS
 
 #endif
