@@ -1,7 +1,9 @@
+#include <sys/cdefs.h>
 #include <mach/mach.h>
 #include "bootstrap.h"
 
 #ifndef ROCKETBOOTSTRAP_LOAD_DYNAMIC
+__BEGIN_DECLS
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp);
 
@@ -14,9 +16,12 @@ kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach
 void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCenter *messaging_center);
 #endif
 
+__END_DECLS
 #else
 
 #include <dlfcn.h>
+
+__BEGIN_DECLS
 
 __attribute__((unused))
 static kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
@@ -80,4 +85,5 @@ static void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessag
 }
 #endif
 
+__END_DECLS
 #endif
