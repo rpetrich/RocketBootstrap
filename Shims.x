@@ -12,11 +12,14 @@ kern_return_t (*_bootstrap_look_up3)(mach_port_t bp, const name_t service_name, 
 kern_return_t $bootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	id obj = [[NSThread currentThread].threadDictionary objectForKey:@"rocketbootstrap_intercepting_bootstrap_lookup"];
-	[pool drain];
+	NSMutableDictionary *threadDictionary = [NSThread currentThread].threadDictionary;
+	id obj = [threadDictionary objectForKey:@"rocketbootstrap_intercept_next_lookup"];
 	if (obj) {
+		[threadDictionary removeObjectForKey:@"rocketbootstrap_intercept_next_lookup"];
+		[pool drain];
 		return rocketbootstrap_look_up(bp, service_name, sp);
 	}
+	[pool drain];
 	return _bootstrap_look_up3(bp, service_name, sp, target_pid, instance_id, flags);
 }
 
@@ -38,9 +41,9 @@ CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef alloca
 	hook_bootstrap_lookup();
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSMutableDictionary *threadDictionary = [NSThread currentThread].threadDictionary;
-	[threadDictionary setObject:(id)kCFBooleanTrue forKey:@"rocketbootstrap_intercepting_bootstrap_lookup"];
+	[threadDictionary setObject:(id)kCFBooleanTrue forKey:@"rocketbootstrap_intercept_next_lookup"];
 	CFMessagePortRef result = CFMessagePortCreateRemote(allocator, name);
-	[threadDictionary removeObjectForKey:@"rocketbootstrap_intercepting_bootstrap_lookup"];
+	[threadDictionary removeObjectForKey:@"rocketbootstrap_intercept_next_lookup"];
 	[pool drain];
 	return result;
 }
