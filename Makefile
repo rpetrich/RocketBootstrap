@@ -1,5 +1,5 @@
 LIBRARY_NAME = librocketbootstrap
-librocketbootstrap_FILES = Tweak.x
+librocketbootstrap_FILES = Tweak.x Shims.x
 librocketbootstrap_LIBRARIES = substrate
 librocketbootstrap_FRAMEWORKS = Foundation
 
