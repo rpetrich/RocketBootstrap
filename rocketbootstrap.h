@@ -1,6 +1,8 @@
+#include <sys/cdefs.h>
 #include <mach/mach.h>
 #include "bootstrap.h"
 
+__BEGIN_DECLS
 #ifndef ROCKETBOOTSTRAP_LOAD_DYNAMIC
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp);
@@ -22,3 +24,4 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 #else
 #include "rocketbootstrap_dynamic.h"
 #endif
+__END_DECLS
