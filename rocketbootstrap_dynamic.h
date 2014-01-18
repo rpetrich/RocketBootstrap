@@ -46,6 +46,34 @@ static kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_nam
 }
 #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 
+#ifdef __COREFOUNDATION_CFMESSAGEPORT__
+__attribute__((unused))
+static CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef allocator, CFStringRef name)
+{
+	static CFMessagePortRef (*impl)(CFAllocatorRef allocator, CFStringRef name);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_cfmessageportcreateremote");
+		if (!impl)
+			impl = CFMessagePortCreateRemote;
+	}
+	return impl(allocator, name);
+}
+__attribute__((unused))
+static kern_return_t rocketbootstrap_cfmessageportexposelocal(CFMessagePortRef messagePort)
+{
+	static kern_return_t (*impl)(CFMessagePortRef messagePort);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_cfmessageportexposelocal");
+		if (!impl)
+			return -1;
+	}
+	return impl(messagePort);
+}
+#endif
 
 #ifdef __OBJC__
 @class CPDistributedMessagingCenter;
