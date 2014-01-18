@@ -8,10 +8,15 @@
 #include "sandbox.h"
 #endif
 
+#define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
+#import "LightMessaging/LightMessaging.h"
+
 #import <mach/mach.h>
 #import <substrate.h>
 #import <libkern/OSAtomic.h>
 #import <CaptainHook/CaptainHook.h>
+
+#define kRocketBootstrapUnlockService "com.rpetrich.rocketbootstrap"
 
 static inline bool rocketbootstrap_is_passthrough(void)
 {
@@ -38,7 +43,7 @@ static volatile OSSpinLock namesLock;
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
 {
-	if (rocketbootstrap_is_passthrough() || allowedNames) {
+	if (rocketbootstrap_is_passthrough() || %c(SBUserNotificationCenter)) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
 			int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
 			if (sandbox_result) {
@@ -91,19 +96,53 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	return err;
 }
 
-// SpringBoard
+static LMConnection connection = {
+	MACH_PORT_NULL,
+	kRocketBootstrapUnlockService
+};
+
+static void springboard_restarted_callback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	OSSpinLockLock(&namesLock);
+	NSSet *allNames = [allowedNames copy];
+	OSSpinLockUnlock(&namesLock);
+	for (NSString *name in allNames) {
+		const char *service_name = [name UTF8String];
+		LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));		
+	}
+	[allNames release];
+	[pool drain];
+}
 
 kern_return_t rocketbootstrap_unlock(const name_t service_name)
 {
-	if (allowedNames) {
-		NSString *string = [[NSString alloc] initWithUTF8String:service_name];
-		OSSpinLockLock(&namesLock);
-		[allowedNames addObject:string];
-		OSSpinLockUnlock(&namesLock);
-		[string release];
+	if (rocketbootstrap_is_passthrough())
 		return 0;
+	NSString *string = [[NSString alloc] initWithUTF8String:service_name];
+	BOOL firstCall;
+	OSSpinLockLock(&namesLock);
+	if (!allowedNames) {
+		allowedNames = [[NSMutableSet alloc] init];
+		firstCall = YES;
+	} else {
+		firstCall = NO;
 	}
-	return 1;
+	[allowedNames addObject:string];
+	OSSpinLockUnlock(&namesLock);
+	[string release];
+	if (%c(SBUserNotificationCenter))
+		return 0;
+	// Ask SpringBoard to unlock it for us
+	int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, kRocketBootstrapUnlockService);
+	if (sandbox_result) {
+		return sandbox_result;
+	}
+	if (firstCall) {
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &springboard_restarted_callback, springboard_restarted_callback, CFSTR("com.apple.springboard.finishedstartup"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+	}
+	LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
+	return 0;
 }
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -118,7 +157,7 @@ kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach
 
 static CFMachPortCallBack originalCallout;
 
-static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
+static void replacementMachPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
 {
 	mach_msg_header_t *head = bytes;
 	mach_msg_id_t msg_id = head->msgh_id;
@@ -207,7 +246,7 @@ static CFMachPortRef $_CFMachPortCreateWithPort2 (
 	if (replacing && targetRunLoop == CFRunLoopGetCurrent()) {
 		targetRunLoop = NULL;
 		originalCallout = callout;
-		callout = machPortCallback;
+		callout = replacementMachPortCallback;
 	}
 	return __CFMachPortCreateWithPort2(allocator, port, callout, context, shouldFreeInfo, deathWatch);
 }
@@ -280,11 +319,35 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 	objc_setAssociatedObject(messaging_center, &has_hooked_messaging_center, (id)kCFBooleanTrue, OBJC_ASSOCIATION_ASSIGN);
 }
 
+static void unlockMachPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
+{
+	LMMessage *request = bytes;
+	if (size < sizeof(LMMessage)) {
+		LMSendReply(request->head.msgh_remote_port, NULL, 0);
+		LMResponseBufferFree(bytes);
+		return;
+	}
+	// Send Response
+	const void *data = LMMessageGetData(request);
+	size_t length = LMMessageGetDataLength(request);
+	if (length) {
+		char *copy = malloc(length + 1);
+		if (copy) {
+			memcpy(copy, data, length);
+			copy[length] = '\0';
+			rocketbootstrap_unlock(copy);
+			free(copy);
+		}
+	}
+	LMSendReply(request->head.msgh_remote_port, NULL, 0);
+	LMResponseBufferFree(bytes);
+}
+
 %ctor
 {
 	%init();
 	if (%c(SBUserNotificationCenter)) {
-		allowedNames = [[NSMutableSet alloc] init];
+		LMStartService(connection.serverName, CFRunLoopGetCurrent(), unlockMachPortCallback);
 		MSHookFunction(_CFMachPortCreateWithPort2, $_CFMachPortCreateWithPort2, (void **)&__CFMachPortCreateWithPort2);
 	}
 }
