@@ -106,9 +106,11 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 {
 	if (rocketbootstrap_is_passthrough())
 		return;
+	OSSpinLockLock(&spin_lock);
 	if (!has_hooked_messaging_center) {
 		has_hooked_messaging_center = true;
 		%init(messaging_center);
 	}
+	OSSpinLockUnlock(&spin_lock);
 	objc_setAssociatedObject(messaging_center, &has_hooked_messaging_center, (id)kCFBooleanTrue, OBJC_ASSOCIATION_ASSIGN);
 }
