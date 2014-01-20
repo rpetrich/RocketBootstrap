@@ -4,8 +4,8 @@ Name: RocketBootstrap
 Version: 1.0
 Architecture: iphoneos-arm
 Description: mach lookup support library for iOS 7
-Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=rocketbootstrapDp
-Homepage: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=rocketbootstrapDp
+Depiction: http://rpetri.ch/cydia/rocketbootstrap/
+Homepage: http://rpetri.ch/cydia/rocketbootstrap/
 Maintainer: BigBoss <bigboss@thebigboss.org>
 Author: Ryan Petrich <rpetrich+rocketbootstrap@gmail.com>
 Sponsor: thebigboss.org <http://thebigboss.org>
