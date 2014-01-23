@@ -261,7 +261,7 @@ static CFMachPortRef $_CFMachPortCreateWithPort2 (
 static void unlockMachPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
 {
 	LMMessage *request = bytes;
-	if (size < sizeof(LMMessage)) {
+	if (LMDataWithSizeIsValidMessage(bytes, size)) {
 		LMSendReply(request->head.msgh_remote_port, NULL, 0);
 		LMResponseBufferFree(bytes);
 		return;
