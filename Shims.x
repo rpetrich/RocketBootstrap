@@ -17,7 +17,7 @@ kern_return_t $bootstrap_look_up3(mach_port_t bp, const name_t service_name, mac
 	if (obj) {
 		[threadDictionary removeObjectForKey:@"rocketbootstrap_intercept_next_lookup"];
 		[pool drain];
-		return rocketbootstrap_look_up(bp, service_name, sp);
+		return rocketbootstrap_look_up3(bp, service_name, sp, target_pid, instance_id, flags);
 	}
 	[pool drain];
 	return _bootstrap_look_up3(bp, service_name, sp, target_pid, instance_id, flags);
@@ -116,4 +116,95 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 	}
 	OSSpinLockUnlock(&spin_lock);
 	objc_setAssociatedObject(messaging_center, &has_hooked_messaging_center, (id)kCFBooleanTrue, OBJC_ASSOCIATION_ASSIGN);
+}
+
+typedef void *xpc_connection_t;
+typedef void(*_xpc_connection_init_type)(xpc_connection_t connection);
+static _xpc_connection_init_type _xpc_connection_init;
+static _xpc_connection_init_type __xpc_connection_init;
+extern void xpc_connection_cancel(xpc_connection_t connection) __attribute__((weak_import));
+typedef void(*xpc_connection_cancel_type)(xpc_connection_t connection);
+static xpc_connection_cancel_type _xpc_connection_cancel;
+extern const char *xpc_connection_get_name(xpc_connection_t connection) __attribute__((weak_import));
+static CFMutableSetRef tracked_xpc_connections;
+
+// FIXME this theos fork's Cydia Substrate headers are outdated; the stub it builds however contains the following functions
+typedef const void *MSImageRef;
+MSImageRef MSGetImageByName(const char *file);
+void *MSFindSymbol(const void *image, const char *name);
+
+static void $_xpc_connection_init(xpc_connection_t connection)
+{
+	OSSpinLockLock(&spin_lock);
+	Boolean tracking_connection;
+	if (tracked_xpc_connections) {
+		tracking_connection = CFSetContainsValue(tracked_xpc_connections, connection);
+	} else {
+		tracking_connection = false;
+	}
+	OSSpinLockUnlock(&spin_lock);
+	if (tracking_connection) {
+		hook_bootstrap_lookup();
+		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+		NSMutableDictionary *threadDictionary = [NSThread currentThread].threadDictionary;
+		[threadDictionary setObject:(id)kCFBooleanTrue forKey:@"rocketbootstrap_intercept_next_lookup"];
+		__xpc_connection_init(connection);
+		[threadDictionary removeObjectForKey:@"rocketbootstrap_intercept_next_lookup"];
+		[pool drain];
+	} else {
+		__xpc_connection_init(connection);
+	}
+}
+
+void $xpc_connection_cancel(xpc_connection_t connection)
+{
+	OSSpinLockLock(&spin_lock);
+	if (tracked_xpc_connections) {
+		CFSetRemoveValue(tracked_xpc_connections, connection);
+	}
+	OSSpinLockUnlock(&spin_lock);
+	_xpc_connection_cancel(connection);
+}
+
+static void hook_xpc(void)
+{
+	static bool hooked_xpc;
+	OSSpinLockLock(&spin_lock);
+	if (!hooked_xpc) {
+		MSImageRef libxpc = MSGetImageByName("/usr/lib/system/libxpc.dylib");
+		if (libxpc) {
+			_xpc_connection_init = MSFindSymbol(libxpc, "__xpc_connection_init");
+			if (_xpc_connection_init) {
+				MSHookFunction(_xpc_connection_init, $_xpc_connection_init, (void **)&__xpc_connection_init);				
+			} else {
+				NSLog(@"RocketBootstrap: Cannot find _xpc_connection_init in libxpc.dylib");
+			}
+			MSHookFunction(xpc_connection_cancel, $xpc_connection_cancel, (void **)&_xpc_connection_cancel);
+		} else {
+			NSLog(@"RocketBootstrap: Cannot open /usr/lib/system/libxpc.dylib");
+		}
+		hooked_xpc = true;
+	}
+	OSSpinLockUnlock(&spin_lock);
+}
+
+void rocketbootstrap_xpc_connection_apply(xpc_connection_t connection)
+{
+	if (rocketbootstrap_is_passthrough())
+		return;
+	hook_xpc();
+	OSSpinLockLock(&spin_lock);
+	if (!tracked_xpc_connections) {
+		tracked_xpc_connections = CFSetCreateMutable(kCFAllocatorDefault, 0, NULL);
+	}
+	CFSetAddValue(tracked_xpc_connections, connection);
+	OSSpinLockUnlock(&spin_lock);
+}
+
+kern_return_t rocketbootstrap_xpc_unlock(xpc_connection_t listener)
+{
+	const char *name = xpc_connection_get_name(listener);
+	if (!name)
+		return KERN_INVALID_ADDRESS;
+	return rocketbootstrap_unlock(name);
 }

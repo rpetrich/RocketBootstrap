@@ -22,6 +22,9 @@
 typedef struct {
 	mach_msg_header_t head;
 	mach_msg_body_t body;
+	pid_t target_pid;
+	uuid_t instance_id;
+	uint64_t flags;
 	uint32_t name_length;
 	char name[];
 } _rocketbootstrap_lookup_query_t;
@@ -36,6 +39,12 @@ static NSMutableSet *allowedNames;
 static volatile OSSpinLock namesLock;
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
+{
+	uuid_t instance_id = { 0 };
+	return rocketbootstrap_look_up3(bp, service_name, sp, 0, instance_id, 0);
+}
+
+kern_return_t rocketbootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags)
 {
 	if (rocketbootstrap_is_passthrough() || %c(SBUserNotificationCenter)) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
@@ -73,6 +82,9 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	message->head.msgh_local_port = replyPort;
 	message->head.msgh_reserved = 0;
 	message->head.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
+	message->target_pid = target_pid;
+	memcpy(message->instance_id, instance_id, sizeof(uuid_t));
+	message->flags = flags;
 	message->name_length = service_name_size;
 	memcpy(&message->name[0], service_name, service_name_size);
 	err = mach_msg(&message->head, MACH_SEND_MSG | MACH_RCV_MSG | MACH_RCV_TIMEOUT, size, size, replyPort, 200, MACH_PORT_NULL);
@@ -175,7 +187,7 @@ static void replacementMachPortCallback(CFMachPortRef port, void *bytes, CFIndex
 			mach_port_t bootstrap = MACH_PORT_NULL;
 			err = task_get_bootstrap_port(selfTask, &bootstrap);
 			if (!err) {
-				bootstrap_look_up(bootstrap, [name UTF8String], &servicePort);
+				bootstrap_look_up3(bootstrap, [name UTF8String], &servicePort, lookup_message->target_pid, lookup_message->instance_id, lookup_message->flags);
 			}
 		}
 		[name release];

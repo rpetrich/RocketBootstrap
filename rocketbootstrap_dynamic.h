@@ -46,6 +46,34 @@ static kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_nam
 }
 #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 
+#ifdef XPC_API_VERSION
+kern_return_t rocketbootstrap_xpc_connection_apply(xpc_connection_t connection)
+{
+	static kern_return_t (*impl)(xpc_connection_t connection);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = (kern_return_t (*)(xpc_connection_t))dlsym(handle, "rocketbootstrap_xpc_connection_apply");
+		if (!impl)
+			return -1;
+	}
+	return impl(connection);
+}
+
+kern_return_t rocketbootstrap_xpc_unlock(xpc_connection_t listener)
+{
+	static kern_return_t (*impl)(xpc_connection_t listener);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = (kern_return_t (*)(xpc_connection_t))dlsym(handle, "rocketbootstrap_xpc_unlock");
+		if (!impl)
+			return -1;
+	}
+	return impl(listener);
+}
+#endif
+
 #ifdef __COREFOUNDATION_CFMESSAGEPORT__
 __attribute__((unused))
 static CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef allocator, CFStringRef name)
