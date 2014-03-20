@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.rpetrich.rocketbootstrap.tests.xpcserver</string>
+	<key>MachServices</key>
+	<dict>
+		<key>com.rpetrich.rocketbootstrap.tests.xpcserver</key>
+		<true/>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/libexec/librocketbootstrap_xpc_server_test</string>
+	</array>
+	<key>UserName</key>
+	<string>mobile</string>
+	<!-- The RunAtLoad property is defined purely for testing rocketbootstrap_xpc_unlock. -->
+	<!-- Production applications should use a SpringBoard add-in for unlocking the service's Mach port. -->
+	<!-- Setting RunAtLoad disables launchd's on-demand service launching feature! -->
+	<key>RunAtLoad</key>
+	<true/>
+</dict>
+</plist>

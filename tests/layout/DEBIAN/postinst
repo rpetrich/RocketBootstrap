@@ -1,0 +1,3 @@
+#!/bin/sh
+launchctl load /Library/LaunchDaemons/com.rpetrich.rocketbootstrap.tests.xpcserver.plist
+exit 0
