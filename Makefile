@@ -3,6 +3,11 @@ librocketbootstrap_FILES = Tweak.x Shims.x
 librocketbootstrap_LIBRARIES = substrate
 librocketbootstrap_FRAMEWORKS = Foundation
 
+TOOL_NAME = rocketd
+rocketd_FILES = rocketd.m
+rocketd_INSTALL_PATH = /usr/libexec
+rocketd_IPHONE_ARCHS = armv6 arm64
+
 ADDITIONAL_CFLAGS = -std=c99
 
 IPHONE_ARCHS = armv6 armv7 armv7s arm64
@@ -16,6 +21,7 @@ THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Develope
 
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk
+include framework/makefiles/tool.mk
 
 stage::
 	mkdir -p "$(THEOS_STAGING_DIR)/usr/include"

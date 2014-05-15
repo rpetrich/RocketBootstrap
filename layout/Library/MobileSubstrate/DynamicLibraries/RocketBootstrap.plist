@@ -4,9 +4,9 @@
 <dict>
 	<key>Filter</key>
 	<dict>
-		<key>Bundles</key>
+		<key>Executables</key>
 		<array>
-			<string>com.apple.springboard</string>
+			<string>ReportCrash</string>
 		</array>
 		<key>CoreFoundationVersion</key>
 		<array>
