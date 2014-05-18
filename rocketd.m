@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <notify.h>
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 
 #import "rocketbootstrap_internal.h"
@@ -56,6 +57,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 int main(int argc, char *argv[])
 {
 	LMCheckInService(connection.serverName, CFRunLoopGetCurrent(), machPortCallback, NULL);
+	notify_post("com.rpetrich.rocketd.started");
 	CFRunLoopRun();
 	return 0;
 }

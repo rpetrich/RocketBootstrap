@@ -72,16 +72,54 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	return err;
 }
 
+static NSMutableSet *allowedNames;
+static volatile OSSpinLock namesLock;
+
+static void daemon_restarted_callback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	OSSpinLockLock(&namesLock);
+	NSSet *allNames = [allowedNames copy];
+	OSSpinLockUnlock(&namesLock);
+	for (NSString *name in allNames) {
+		const char *service_name = [name UTF8String];
+		LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));             
+	}
+	[allNames release];
+	[pool drain];
+}
+
 kern_return_t rocketbootstrap_unlock(const name_t service_name)
 {
 	if (rocketbootstrap_is_passthrough())
 		return 0;
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	NSString *serviceNameString = [NSString stringWithUTF8String:service_name];
+	OSSpinLockLock(&namesLock);
+	BOOL containedName = [allowedNames containsObject:serviceNameString];
+	OSSpinLockUnlock(&namesLock);
+	if (containedName) {
+		[pool drain];
+		return 0;
+	}
 	// Ask rocketd to unlock it for us
 	int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, kRocketBootstrapUnlockService);
 	if (sandbox_result) {
+		[pool drain];
 		return sandbox_result;
 	}
-	return LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
+	kern_return_t result = LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
+	if (!result) {
+		OSSpinLockLock(&namesLock);
+		if (!allowedNames) {
+			allowedNames = [[NSMutableSet alloc] init];
+			CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &daemon_restarted_callback, daemon_restarted_callback, CFSTR("com.rpetrich.rocketd.started"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+		}
+		[allowedNames addObject:serviceNameString];
+		OSSpinLockUnlock(&namesLock);
+	}
+	[pool drain];
+	return result;
 }
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
