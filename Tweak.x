@@ -29,6 +29,13 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 		}
 		return bootstrap_look_up(bp, service_name, sp);
 	}
+	// Compatibility mode for Flex, limits it to only the processes in rbs 1.0.1 and earlier
+	if (strcmp(service_name, "FLMessagingCenterSpringboard") == 0) {
+		int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, "com.apple.SBUserNotification");
+		if (sandbox_result) {
+			return sandbox_result;
+		}
+	}
 	// Ask our service running inside of the com.apple.ReportCrash.SimulateCrash job
 	mach_port_t servicesPort = MACH_PORT_NULL;
 	kern_return_t err = bootstrap_look_up(bp, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
