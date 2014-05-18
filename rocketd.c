@@ -1,10 +1,10 @@
-#import <Foundation/Foundation.h>
 #import <notify.h>
+#import <CoreFoundation/CFLogUtilities.h>
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 
 #import "rocketbootstrap_internal.h"
 
-static NSMutableSet *allowedNames;
+static CFMutableSetRef allowedNames;
 
 static const uint32_t one = 1;
 
@@ -22,33 +22,31 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	const void *reply_data = NULL;
 	uint32_t reply_length = 0;
 	if (length) {
-		NSString *name = [[NSString alloc] initWithBytes:data length:length encoding:NSUTF8StringEncoding];
+		CFStringRef name = CFStringCreateWithBytes(kCFAllocatorDefault, data, length, kCFStringEncodingUTF8, false);
 		if (name) {
 			switch (request->head.msgh_id) {
 				case 0: // Register
 #ifdef DEBUG
-					NSLog(@"Unlocking %@", name);
+					CFLog(kCFLogLevelWarning, @"Unlocking %@", name);
 #endif
-					if (!allowedNames)
-						allowedNames = [[NSMutableSet alloc] init];
-					[allowedNames addObject:name];
+					CFSetAddValue(allowedNames, name);
 					break;
 				case 1: // Query
-					if ([allowedNames containsObject:name]) {
+					if (CFSetContainsValue(allowedNames, name)) {
 						reply_data = &one;
 						reply_length = sizeof one;
 #ifdef DEBUG
-						NSLog(@"Queried %@, is unlocked", name);
+						CFLog(kCFLogLevelWarning, @"Queried %@, is unlocked", name);
 #endif
 					} else {
 #ifdef DEBUG
-						NSLog(@"Queried %@, is locked!", name);
+						CFLog(kCFLogLevelWarning, @"Queried %@, is locked!", name);
 #endif
 					}
 					break;
 			}
+			CFRelease(name);
 		}
-		[name release];
 	}
 	LMSendReply(request->head.msgh_remote_port, reply_data, reply_length);
 	LMResponseBufferFree(bytes);
@@ -56,6 +54,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 
 int main(int argc, char *argv[])
 {
+	allowedNames = CFSetCreateMutable(kCFAllocatorDefault, 0, &kCFTypeSetCallBacks);
 	LMCheckInService(connection.serverName, CFRunLoopGetCurrent(), machPortCallback, NULL);
 	notify_post("com.rpetrich.rocketd.started");
 	CFRunLoopRun();

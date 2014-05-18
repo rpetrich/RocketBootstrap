@@ -4,7 +4,8 @@ librocketbootstrap_LIBRARIES = substrate
 librocketbootstrap_FRAMEWORKS = Foundation
 
 TOOL_NAME = rocketd
-rocketd_FILES = rocketd.m
+rocketd_FILES = rocketd.c
+rocketd_FRAMEWORKS = CoreFoundation
 rocketd_INSTALL_PATH = /usr/libexec
 rocketd_IPHONE_ARCHS = armv6 arm64
 
