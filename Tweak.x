@@ -16,9 +16,11 @@
 #import <libkern/OSAtomic.h>
 #import <launch.h>
 
+static BOOL isDaemon;
+
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
 {
-	if (rocketbootstrap_is_passthrough()) {
+	if (rocketbootstrap_is_passthrough() || isDaemon) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
 			int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
 			if (sandbox_result) {
@@ -233,6 +235,7 @@ extern const char ***_NSGetArgv(void);
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
 	const char **argv = *_NSGetArgv();
 	if (strcmp(argv[0], "/System/Library/CoreServices/ReportCrash") == 0 && argv[1] && strcmp(argv[1], "-f") == 0) {
+		isDaemon = YES;
 		MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
 	}
 }
