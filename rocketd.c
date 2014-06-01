@@ -27,7 +27,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 			switch (request->head.msgh_id) {
 				case 0: // Register
 #ifdef DEBUG
-					CFLog(kCFLogLevelWarning, @"Unlocking %@", name);
+					CFLog(kCFLogLevelWarning, CFSTR("Unlocking %@"), name);
 #endif
 					CFSetAddValue(allowedNames, name);
 					break;
@@ -36,11 +36,11 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 						reply_data = &one;
 						reply_length = sizeof one;
 #ifdef DEBUG
-						CFLog(kCFLogLevelWarning, @"Queried %@, is unlocked", name);
+						CFLog(kCFLogLevelWarning, CFSTR("Queried %@, is unlocked"), name);
 #endif
 					} else {
 #ifdef DEBUG
-						CFLog(kCFLogLevelWarning, @"Queried %@, is locked!", name);
+						CFLog(kCFLogLevelWarning, CFSTR("Queried %@, is locked!"), name);
 #endif
 					}
 					break;
