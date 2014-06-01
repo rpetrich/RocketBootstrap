@@ -263,7 +263,7 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 		task_get_bootstrap_port(mach_task_self(), &bootstrap);
 		mach_port_t servicesPort = MACH_PORT_NULL;
 		kern_return_t err = bootstrap_look_up(bootstrap, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
-		if (err || true) {
+		if (err) {
 			const CFTypeRef keys[] = {
 				kCFUserNotificationAlertHeaderKey,
 				kCFUserNotificationAlertMessageKey,
@@ -277,7 +277,7 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, (const void **)values, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 			SInt32 err = 0;
 			CFUserNotificationRef notification = CFUserNotificationCreate(kCFAllocatorDefault, 0.0, kCFUserNotificationPlainAlertLevel, &err, dict);
-			CFRunLoopSourceRef runLoopSource = CFUserNotificationCreateRunLoopSource(kCFAllocatorDefault, notification, IncompatiblePackageInstalledCallback, 0);
+			CFRunLoopSourceRef runLoopSource = CFUserNotificationCreateRunLoopSource(kCFAllocatorDefault, notification, SanityCheckNotificationCallback, 0);
 			CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, kCFRunLoopCommonModes);
 			CFRelease(dict);
 		}
