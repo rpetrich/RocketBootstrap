@@ -15,6 +15,7 @@
 #import <substrate.h>
 #import <libkern/OSAtomic.h>
 #import <launch.h>
+#import <CoreFoundation/CFUserNotification.h>
 
 extern int *_NSGetArgc(void);
 extern const char ***_NSGetArgv(void);
@@ -243,6 +244,10 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 	return result;
 }
 
+static void SanityCheckNotificationCallback(CFUserNotificationRef userNotification, CFOptionFlags responseFlags)
+{
+}
+
 %ctor
 {
 	%init();
@@ -252,5 +257,29 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 	if (strcmp(argv[0], "/System/Library/CoreServices/ReportCrash") == 0 && argv[1] && strcmp(argv[1], "-f") == 0) {
 		isDaemon = YES;
 		MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
+	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
+		// Sanity check on the SimulateCrash service
+		mach_port_t bootstrap = MACH_PORT_NULL;
+		task_get_bootstrap_port(mach_task_self(), &bootstrap);
+		mach_port_t servicesPort = MACH_PORT_NULL;
+		kern_return_t err = bootstrap_look_up(bootstrap, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
+		if (err || true) {
+			const CFTypeRef keys[] = {
+				kCFUserNotificationAlertHeaderKey,
+				kCFUserNotificationAlertMessageKey,
+				kCFUserNotificationDefaultButtonTitleKey,
+			};
+			const CFTypeRef values[] = {
+				CFSTR("System files missing!"),
+				CFSTR("RocketBootstrap has detected that your SimulateCrash crash reporting daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
+				CFSTR("OK"),
+			};
+			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, (const void **)values, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+			SInt32 err = 0;
+			CFUserNotificationRef notification = CFUserNotificationCreate(kCFAllocatorDefault, 0.0, kCFUserNotificationPlainAlertLevel, &err, dict);
+			CFRunLoopSourceRef runLoopSource = CFUserNotificationCreateRunLoopSource(kCFAllocatorDefault, notification, IncompatiblePackageInstalledCallback, 0);
+			CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, kCFRunLoopCommonModes);
+			CFRelease(dict);
+		}
 	}
 }
