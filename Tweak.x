@@ -16,6 +16,12 @@
 #import <libkern/OSAtomic.h>
 #import <launch.h>
 
+extern int *_NSGetArgc(void);
+extern const char ***_NSGetArgv(void);
+
+#define kUserAppsPath "/var/mobile/Applications/"
+#define kSystemAppsPath "/Applications/"
+
 static BOOL isDaemon;
 
 kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
@@ -31,10 +37,15 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	}
 	// Compatibility mode for Flex, limits it to only the processes in rbs 1.0.1 and earlier
 	if (strcmp(service_name, "FLMessagingCenterSpringboard") == 0) {
-		int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, "com.apple.SBUserNotification");
-		if (sandbox_result) {
-			return sandbox_result;
-		}
+		const char **argv = *_NSGetArgv();
+		size_t arg0len = strlen(argv[0]);
+		bool allowed = false;
+		if ((arg0len > sizeof(kUserAppsPath)) && (memcmp(argv[0], kUserAppsPath, sizeof(kUserAppsPath) - 1) == 0))
+			allowed = true;
+		if ((arg0len > sizeof(kSystemAppsPath)) && (memcmp(argv[0], kSystemAppsPath, sizeof(kSystemAppsPath) - 1) == 0))
+			allowed = true;
+		if (!allowed)
+			return 1;
 	}
 	// Ask our service running inside of the com.apple.ReportCrash.SimulateCrash job
 	mach_port_t servicesPort = MACH_PORT_NULL;
@@ -231,9 +242,6 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 	} while (continue_server_once);
 	return result;
 }
-
-extern int *_NSGetArgc(void);
-extern const char ***_NSGetArgv(void);
 
 %ctor
 {
