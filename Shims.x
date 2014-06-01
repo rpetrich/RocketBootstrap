@@ -36,7 +36,7 @@ static void hook_bootstrap_lookup(void)
 
 CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef allocator, CFStringRef name)
 {
-	if (rocketbootstrap_is_passthrough() || %c(SpringBoard))
+	if (rocketbootstrap_is_passthrough())
 		return CFMessagePortCreateRemote(allocator, name);
 	hook_bootstrap_lookup();
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
