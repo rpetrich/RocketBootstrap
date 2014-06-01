@@ -77,14 +77,18 @@ static bool has_hooked_messaging_center;
 		mach_port_t *_sendPort = CHIvarRef(self, _sendPort, mach_port_t);
 		NSLock **_lock = CHIvarRef(self, _lock, NSLock *);
 		NSString **_centerName = CHIvarRef(self, _centerName, NSString *);
-		if (_sendPort && _lock && _centerName && *_centerName && [self respondsToSelector:@selector(_setupInvalidationSource)]) {
+		if (_sendPort && (*_sendPort != MACH_PORT_NULL) && _lock && _centerName && *_centerName && [self respondsToSelector:@selector(_setupInvalidationSource)]) {
 			[*_lock lock];
-			mach_port_t bootstrap = MACH_PORT_NULL;
-			task_get_bootstrap_port(mach_task_self(), &bootstrap);
-			rocketbootstrap_look_up(bootstrap, [*_centerName UTF8String], _sendPort);
-			[self _setupInvalidationSource];
+			mach_port_t result = *_sendPort;
+			if (result != MACH_PORT_NULL) {
+				mach_port_t bootstrap = MACH_PORT_NULL;
+				task_get_bootstrap_port(mach_task_self(), &bootstrap);
+				rocketbootstrap_look_up(bootstrap, [*_centerName UTF8String], _sendPort);
+				[self _setupInvalidationSource];
+				result = *_sendPort;
+			}
 			[*_lock unlock];
-			return *_sendPort;
+			return result;
 		}
 	}
 	return %orig();
