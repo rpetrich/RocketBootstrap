@@ -173,12 +173,10 @@ static boolean_t new_demux(mach_msg_header_t *request, mach_msg_header_t *reply)
 		LMResponseBuffer buffer;
 		if (LMConnectionSendTwoWay(&connection, 1, &lookup_message->name[0], length, &buffer))
 			return false;
-		if (!LMResponseConsumeInteger(&buffer))
-			return false;
+		BOOL nameIsAllowed = LMResponseConsumeInteger(&buffer) != 0;
 		// Lookup service port
 		mach_port_t servicePort = MACH_PORT_NULL;
 		mach_port_t selfTask = mach_task_self();
-		BOOL nameIsAllowed = YES;
 		kern_return_t err;
 		if (nameIsAllowed) {
 			mach_port_t bootstrap = MACH_PORT_NULL;
