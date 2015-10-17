@@ -182,9 +182,13 @@ static boolean_t new_demux(mach_msg_header_t *request, mach_msg_header_t *reply)
 			mach_port_t bootstrap = MACH_PORT_NULL;
 			err = task_get_bootstrap_port(selfTask, &bootstrap);
 			if (!err) {
-				NSString *name = [[NSString alloc] initWithBytes:&lookup_message->name[0] length:length encoding:NSUTF8StringEncoding];
-				bootstrap_look_up(bootstrap, [name UTF8String], &servicePort);
-				[name release];
+				char *buffer = malloc(length + 1);
+				if (buffer) {
+					memcpy(buffer, lookup_message->name, length);
+					buffer[length] = '\0';
+					err = bootstrap_look_up(bootstrap, buffer, &servicePort);
+					free(buffer);
+				}
 			}
 		}
 		// Generate response
