@@ -117,10 +117,18 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSString *serviceNameString = [NSString stringWithUTF8String:service_name];
 	OSSpinLockLock(&namesLock);
-	BOOL containedName = [allowedNames containsObject:serviceNameString];
+	BOOL containedName;
+	if (!allowedNames) {
+		allowedNames = [[NSMutableSet alloc] init];
+		[allowedNames addObject:serviceNameString];
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &daemon_restarted_callback, daemon_restarted_callback, CFSTR("com.rpetrich.rocketd.started"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+		containedName = NO;
+	} else {
+		containedName = [allowedNames containsObject:serviceNameString];
+	}
 	OSSpinLockUnlock(&namesLock);
+	[pool drain];
 	if (containedName) {
-		[pool drain];
 		return 0;
 	}
 	// Ask rocketd to unlock it for us
@@ -129,18 +137,7 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 		[pool drain];
 		return sandbox_result;
 	}
-	kern_return_t result = LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
-	if (!result) {
-		OSSpinLockLock(&namesLock);
-		if (!allowedNames) {
-			allowedNames = [[NSMutableSet alloc] init];
-			CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), &daemon_restarted_callback, daemon_restarted_callback, CFSTR("com.rpetrich.rocketd.started"), NULL, CFNotificationSuspensionBehaviorCoalesce);
-		}
-		[allowedNames addObject:serviceNameString];
-		OSSpinLockUnlock(&namesLock);
-	}
-	[pool drain];
-	return result;
+	return LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
 }
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
