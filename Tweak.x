@@ -1,4 +1,5 @@
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
+#define LIGHTMESSAGING_TIMEOUT 300
 #import "LightMessaging/LightMessaging.h"
 
 #import "rocketbootstrap_internal.h"
@@ -25,7 +26,7 @@ extern const char ***_NSGetArgv(void);
 
 static BOOL isDaemon;
 
-kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
+static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const name_t service_name, mach_port_t *sp, mach_msg_timeout_t timeout)
 {
 	if (rocketbootstrap_is_passthrough() || isDaemon) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
@@ -78,7 +79,13 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	message->head.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
 	message->name_length = service_name_size;
 	memcpy(&message->name[0], service_name, service_name_size);
-	err = mach_msg(&message->head, MACH_SEND_MSG | MACH_RCV_MSG, size, size, replyPort, 0, MACH_PORT_NULL);
+	mach_msg_option_t options = MACH_SEND_MSG | MACH_RCV_MSG;
+	if (timeout == 0) {
+		timeout = MACH_MSG_TIMEOUT_NONE;
+	} else {
+		options |= MACH_SEND_TIMEOUT | MACH_RCV_TIMEOUT;
+	}
+	err = mach_msg(&message->head, options, size, size, replyPort, timeout, MACH_PORT_NULL);
 	// Parse response
 	if (!err) {
 		_rocketbootstrap_lookup_response_t *response = (_rocketbootstrap_lookup_response_t *)message;
@@ -91,6 +98,11 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 	mach_port_deallocate(selfTask, servicesPort);
 	mach_port_deallocate(selfTask, replyPort);
 	return err;
+}
+
+kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name, mach_port_t *sp)
+{
+	return rocketbootstrap_look_up_with_timeout(bp, service_name, sp, LIGHTMESSAGING_TIMEOUT);
 }
 
 static NSMutableSet *allowedNames;
