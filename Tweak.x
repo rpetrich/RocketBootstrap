@@ -271,21 +271,38 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
 		// Sanity check on the SimulateCrash service
 		mach_port_t bootstrap = MACH_PORT_NULL;
-		task_get_bootstrap_port(mach_task_self(), &bootstrap);
+		mach_port_t self = mach_task_self();
+		task_get_bootstrap_port(self, &bootstrap);
 		mach_port_t servicesPort = MACH_PORT_NULL;
 		kern_return_t err = bootstrap_look_up(bootstrap, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
+		bool has_simulate_crash;
 		if (err) {
+			has_simulate_crash = false;
+		} else {
+			mach_port_mod_refs(self, servicesPort, MACH_PORT_RIGHT_SEND, -1);
+			has_simulate_crash = true;
+			servicesPort = MACH_PORT_NULL;
+			err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
+		}
+		if (err == 0) {
+			mach_port_mod_refs(self, servicesPort, MACH_PORT_RIGHT_SEND, -1);
+		} else {
 			const CFTypeRef keys[] = {
 				kCFUserNotificationAlertHeaderKey,
 				kCFUserNotificationAlertMessageKey,
 				kCFUserNotificationDefaultButtonTitleKey,
 			};
-			const CFTypeRef values[] = {
+			const CFTypeRef valuesCrash[] = {
 				CFSTR("System files missing!"),
 				CFSTR("RocketBootstrap has detected that your SimulateCrash crash reporting daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
 				CFSTR("OK"),
 			};
-			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, (const void **)values, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+			const CFTypeRef valuesRocket[] = {
+				CFSTR("System files missing!"),
+				CFSTR("RocketBootstrap has detected that your rocketbootstrap daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
+				CFSTR("OK"),
+			};
+			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, has_simulate_crash ? (const void **)valuesRocket : (const void **)valuesCrash, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 			SInt32 err = 0;
 			CFUserNotificationRef notification = CFUserNotificationCreate(kCFAllocatorDefault, 0.0, kCFUserNotificationPlainAlertLevel, &err, dict);
 			CFRunLoopSourceRef runLoopSource = CFUserNotificationCreateRunLoopSource(kCFAllocatorDefault, notification, SanityCheckNotificationCallback, 0);
