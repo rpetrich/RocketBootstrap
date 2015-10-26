@@ -389,6 +389,9 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 		isDaemon = YES;
 		MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
 	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
+		if (kCFCoreFoundationVersionNumber < 847.20) {
+			return;
+		}
 		// Sanity check on the SimulateCrash service
 		mach_port_t bootstrap = MACH_PORT_NULL;
 		mach_port_t self = mach_task_self();
