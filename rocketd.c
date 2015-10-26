@@ -44,6 +44,11 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 #endif
 					}
 					break;
+				case 2:
+					// Good morning, still awake
+					reply_data = &one;
+					reply_length = sizeof one;
+					break;
 			}
 			CFRelease(name);
 		}
