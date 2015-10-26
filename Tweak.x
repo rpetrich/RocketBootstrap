@@ -137,6 +137,9 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 		containedName = NO;
 	} else {
 		containedName = [allowedNames containsObject:serviceNameString];
+		if (!containedName) {
+			[allowedNames addObject:serviceNameString];
+		}
 	}
 	OSSpinLockUnlock(&namesLock);
 	[pool drain];
