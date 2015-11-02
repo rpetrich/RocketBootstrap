@@ -4,8 +4,8 @@ Name: RocketBootstrap
 Version: 1.0.4~beta2
 Architecture: iphoneos-arm
 Description: mach lookup support library for iOS
-Depiction: http://rpetri.ch/cydia/rocketbootstrap/beta/
-Homepage: http://rpetri.ch/cydia/rocketbootstrap/beta/
+Depiction: http://rpetri.ch/cydia/rocketbootstrap/
+Homepage: http://rpetri.ch/cydia/rocketbootstrap/
 Maintainer: BigBoss <bigboss@thebigboss.org>
 Author: Ryan Petrich <rpetrich+rocketbootstrap@gmail.com>
 Sponsor: thebigboss.org <http://thebigboss.org>
