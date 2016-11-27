@@ -9,7 +9,7 @@ static kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t servic
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_look_up");
+			impl = (kern_return_t (*)(mach_port_t, const name_t, mach_port_t *))dlsym(handle, "rocketbootstrap_look_up");
 		if (!impl)
 			impl = bootstrap_look_up;
 	}
@@ -23,7 +23,7 @@ static kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_unlock");
+			impl = (kern_return_t (*)(const name_t))dlsym(handle, "rocketbootstrap_unlock");
 		if (!impl)
 			return -1;
 	}
@@ -38,7 +38,7 @@ static kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_nam
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_register");
+			impl = (kern_return_t (*)(mach_port_t, name_t, mach_port_t))dlsym(handle, "rocketbootstrap_register");
 		if (!impl)
 			impl = bootstrap_register;
 	}
@@ -54,7 +54,7 @@ static CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_cfmessageportcreateremote");
+			impl = (CFMessagePortRef (*)(CFAllocatorRef, CFStringRef))dlsym(handle, "rocketbootstrap_cfmessageportcreateremote");
 		if (!impl)
 			impl = CFMessagePortCreateRemote;
 	}
@@ -67,7 +67,7 @@ static kern_return_t rocketbootstrap_cfmessageportexposelocal(CFMessagePortRef m
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_cfmessageportexposelocal");
+			impl = (kern_return_t (*)(CFMessagePortRef))dlsym(handle, "rocketbootstrap_cfmessageportexposelocal");
 		if (!impl)
 			return -1;
 	}
@@ -84,7 +84,7 @@ static void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessag
 	if (!impl) {
 		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
 		if (handle)
-			impl = dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
+			impl = (void (*)(CPDistributedMessagingCenter *))dlsym(handle, "rocketbootstrap_distributedmessagingcenter_apply");
 		if (!impl)
 			return;
 	}
