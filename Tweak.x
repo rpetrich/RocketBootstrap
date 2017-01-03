@@ -402,6 +402,10 @@ static void observe_rocketd(void)
 	mach_port_t servicesPort = MACH_PORT_NULL;
 	kern_return_t err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
 	if (err) {
+		system("/usr/libexec/_rocketd_reenable");
+		err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
+	}
+	if (err) {
 #ifdef DEBUG
 		NSLog(@"RocketBootstrap: failed to launch rocketd!");
 #endif

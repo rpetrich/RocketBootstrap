@@ -3,3 +3,5 @@ launchctl load /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist || tru
 launchctl stop com.apple.ReportCrash.SimulateCrash || true
 mv /System/Library/LaunchDaemons{BAK,}/com.apple.ReportCrash.SimulateCrash.plist 2> /dev/null || true
 launchctl load /System/Library/LaunchDaemons/com.apple.ReportCrash.SimulateCrash.plist 2> /dev/null || true
+chmod +s /usr/libexec/_rocketd_reenable
+chown root:wheel /usr/libexec/_rocketd_reenable
