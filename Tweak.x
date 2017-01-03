@@ -303,6 +303,8 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 	return result;
 }
 
+#ifdef __clang__
+
 static void *interceptedConnection;
 
 static void *(*_xpc_connection_create_mach_service)(const char *name, dispatch_queue_t targetq, uint64_t flags);
@@ -337,6 +339,7 @@ static void $_xpc_connection_mach_event(void *context, dispatch_mach_reason_t re
 	return __xpc_connection_mach_event(context, reason, message, error);
 }
 
+#endif
 
 static pid_t pid_of_process(const char *process_name)
 {
@@ -474,6 +477,7 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 			NSLog(@"RocketBootstrap: Initializing ReportCrash using mach_msg_server");
 #endif
 			MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
+#ifdef __clang__
 		} else if (strcmp(argv[1], "com.apple.ReportCrash.SimulateCrash") == 0) {
 			isDaemon = YES;
 #ifdef DEBUG
@@ -502,6 +506,7 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 				NSLog(@"RocketBootstrap: Could not find libxpc.dylib image!");
 #endif
 			}
+#endif
 		}
 	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
 #ifdef DEBUG
