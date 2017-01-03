@@ -1,6 +1,7 @@
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 #define LIGHTMESSAGING_TIMEOUT 300
 #import "LightMessaging/LightMessaging.h"
+#import "log.h"
 
 #import "rocketbootstrap_internal.h"
 

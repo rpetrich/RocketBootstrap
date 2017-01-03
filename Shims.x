@@ -1,3 +1,4 @@
+#import "log.h"
 #import "rocketbootstrap_internal.h"
 
 #import <CaptainHook/CaptainHook.h>
