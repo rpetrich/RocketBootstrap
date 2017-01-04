@@ -8,9 +8,9 @@
 static OSSpinLock spin_lock;
 
 kern_return_t bootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags) __attribute__((weak_import));
-kern_return_t (*_bootstrap_look_up3)(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags);
+static kern_return_t (*_bootstrap_look_up3)(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags);
 
-kern_return_t $bootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags)
+static kern_return_t $bootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSMutableDictionary *threadDictionary = [NSThread currentThread].threadDictionary;

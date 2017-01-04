@@ -254,7 +254,7 @@ static kern_return_t handle_bootstrap_lookup_msg(mach_msg_header_t *request)
 
 mach_msg_return_t mach_msg_server_once(boolean_t (*demux)(mach_msg_header_t *, mach_msg_header_t *), mach_msg_size_t max_size, mach_port_t rcv_name, mach_msg_options_t options);
 
-mach_msg_return_t (*_mach_msg_server_once)(boolean_t (*demux)(mach_msg_header_t *, mach_msg_header_t *), mach_msg_size_t max_size, mach_port_t rcv_name, mach_msg_options_t options);
+static mach_msg_return_t (*_mach_msg_server_once)(boolean_t (*demux)(mach_msg_header_t *, mach_msg_header_t *), mach_msg_size_t max_size, mach_port_t rcv_name, mach_msg_options_t options);
 
 static volatile OSSpinLock server_once_lock;
 static boolean_t (*server_once_demux_orig)(mach_msg_header_t *, mach_msg_header_t *);
