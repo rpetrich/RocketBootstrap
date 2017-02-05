@@ -1,11 +1,12 @@
 #import "log.h"
+#import "unfair_lock.h"
 #import "rocketbootstrap_internal.h"
 
 #import <CaptainHook/CaptainHook.h>
 #import <libkern/OSAtomic.h>
 #import <substrate.h>
 
-static OSSpinLock spin_lock;
+static unfair_lock shim_lock;
 
 kern_return_t bootstrap_look_up3(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags) __attribute__((weak_import));
 static kern_return_t (*_bootstrap_look_up3)(mach_port_t bp, const name_t service_name, mach_port_t *sp, pid_t target_pid, const uuid_t instance_id, uint64_t flags);
@@ -27,12 +28,12 @@ static kern_return_t $bootstrap_look_up3(mach_port_t bp, const name_t service_na
 static void hook_bootstrap_lookup(void)
 {
 	static bool hooked_bootstrap_look_up;
-	OSSpinLockLock(&spin_lock);
+	unfair_lock_lock(&shim_lock);
 	if (!hooked_bootstrap_look_up) {
 		MSHookFunction(bootstrap_look_up3, $bootstrap_look_up3, (void **)&_bootstrap_look_up3);
 		hooked_bootstrap_look_up = true;
 	}
-	OSSpinLockUnlock(&spin_lock);
+	unfair_lock_unlock(&shim_lock);
 }
 
 CFMessagePortRef rocketbootstrap_cfmessageportcreateremote(CFAllocatorRef allocator, CFStringRef name)

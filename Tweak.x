@@ -2,6 +2,7 @@
 #define LIGHTMESSAGING_TIMEOUT 300
 #import "LightMessaging/LightMessaging.h"
 #import "log.h"
+#import "unfair_lock.h"
 
 #import "rocketbootstrap_internal.h"
 
@@ -130,14 +131,14 @@ kern_return_t rocketbootstrap_look_up(mach_port_t bp, const name_t service_name,
 }
 
 static NSMutableSet *allowedNames;
-static volatile OSSpinLock namesLock;
+static unfair_lock namesLock;
 
 static void daemon_restarted_callback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	OSSpinLockLock(&namesLock);
+	unfair_lock_lock(&namesLock);
 	NSSet *allNames = [allowedNames copy];
-	OSSpinLockUnlock(&namesLock);
+	unfair_lock_unlock(&namesLock);
 	for (NSString *name in allNames) {
 		const char *service_name = [name UTF8String];
 		LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));             
@@ -155,7 +156,7 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 		return 0;
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSString *serviceNameString = [NSString stringWithUTF8String:service_name];
-	OSSpinLockLock(&namesLock);
+	unfair_lock_lock(&namesLock);
 	BOOL containedName;
 	if (!allowedNames) {
 		allowedNames = [[NSMutableSet alloc] init];
@@ -168,7 +169,7 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 			[allowedNames addObject:serviceNameString];
 		}
 	}
-	OSSpinLockUnlock(&namesLock);
+	unfair_lock_unlock(&namesLock);
 	[pool drain];
 	if (containedName) {
 		return 0;
@@ -256,7 +257,7 @@ mach_msg_return_t mach_msg_server_once(boolean_t (*demux)(mach_msg_header_t *, m
 
 static mach_msg_return_t (*_mach_msg_server_once)(boolean_t (*demux)(mach_msg_header_t *, mach_msg_header_t *), mach_msg_size_t max_size, mach_port_t rcv_name, mach_msg_options_t options);
 
-static volatile OSSpinLock server_once_lock;
+static unfair_lock server_once_lock;
 static boolean_t (*server_once_demux_orig)(mach_msg_header_t *, mach_msg_header_t *);
 static bool continue_server_once;
 
@@ -283,18 +284,18 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 	NSLog(@"RocketBootstrap: mach_msg_server_once(%p, %llu, %llu, 0x%llx)", demux, (unsigned long long)max_size, (unsigned long long)rcv_name, (long long)options);
 #endif
 	// Highjack com.apple.ReportCrash.SimulateCrash's use of mach_msg_server_once
-	OSSpinLockLock(&server_once_lock);
+	unfair_lock_lock(&server_once_lock);
 	if (!server_once_demux_orig) {
 		server_once_demux_orig = demux;
 		demux = new_demux;
 	} else if (server_once_demux_orig == demux) {
 		demux = new_demux;
 	} else {
-		OSSpinLockUnlock(&server_once_lock);
+		unfair_lock_unlock(&server_once_lock);
 		mach_msg_return_t result = _mach_msg_server_once(demux, max_size, rcv_name, options);
 		return result;
 	}
-	OSSpinLockUnlock(&server_once_lock);
+	unfair_lock_unlock(&server_once_lock);
 	mach_msg_return_t result;
 	do {
 		continue_server_once = false;
