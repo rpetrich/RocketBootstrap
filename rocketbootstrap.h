@@ -1,3 +1,6 @@
+#ifndef ROCKETBOOTSTRAP_H
+#define ROCKETBOOTSTRAP_H
+
 #include <sys/cdefs.h>
 #include <mach/mach.h>
 #include "bootstrap.h"
@@ -25,3 +28,5 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 #include "rocketbootstrap_dynamic.h"
 #endif
 __END_DECLS
+
+#endif
