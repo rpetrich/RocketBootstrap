@@ -91,3 +91,33 @@ static void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessag
 	impl(messaging_center);
 }
 #endif
+
+#ifdef __XPC_CONNECTION_H__
+__attribute__((unused))
+xpc_connection_t rocketbootstrap_xpc_connection_create(const char *name, dispatch_queue_t targetq, uint64_t flags)
+{
+	static xpc_connection_t (*impl)(const char *name, dispatch_queue_t targetq, uint64_t flags);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_xpc_connection_create");
+		if (!impl)
+			return NULL;
+	}
+	return impl(name, targetq, flags);
+}
+
+__attribute__((unused))
+xpc_object_t rocketbootstrap_xpc_connection_copy_application_identifier(xpc_connection_t connection)
+{
+	static xpc_object_t (*impl)(xpc_connection_t connection);
+	if (!impl) {
+		void *handle = dlopen("/usr/lib/librocketbootstrap.dylib", RTLD_LAZY);
+		if (handle)
+			impl = dlsym(handle, "rocketbootstrap_xpc_connection_copy_application_identifier");
+		if (!impl)
+			return NULL;
+	}
+	return impl(connection);
+}
+#endif
