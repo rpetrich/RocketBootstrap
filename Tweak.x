@@ -1,3 +1,7 @@
+#include <Availability.h>
+#undef __IOS_PROHIBITED
+#define __IOS_PROHIBITED
+
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 #define LIGHTMESSAGING_TIMEOUT 300
 #import "LightMessaging/LightMessaging.h"
@@ -403,7 +407,14 @@ static void observe_rocketd(void)
 	mach_port_t servicesPort = MACH_PORT_NULL;
 	kern_return_t err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
 	if (err) {
+#if __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wavailability"
+#endif
 		system("/usr/libexec/_rocketd_reenable");
+#if __clang__
+#pragma clang diagnostic pop
+#endif
 		err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
 	}
 	if (err) {
@@ -474,16 +485,16 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 	%init();
 	// Attach rockets when in the com.apple.ReportCrash.SimulateCrash job
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
-	const char **argv = *_NSGetArgv();
-	if (strcmp(argv[0], "/System/Library/CoreServices/ReportCrash") == 0 && argv[1]) {
-		if (strcmp(argv[1], "-f") == 0) {
+	const char **_argv = *_NSGetArgv();
+	if (strcmp(_argv[0], "/System/Library/CoreServices/ReportCrash") == 0 && _argv[1]) {
+		if (strcmp(_argv[1], "-f") == 0) {
 			isDaemon = YES;
 #ifdef DEBUG
 			NSLog(@"RocketBootstrap: Initializing ReportCrash using mach_msg_server");
 #endif
 			MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
 #ifdef __clang__
-		} else if (strcmp(argv[1], "com.apple.ReportCrash.SimulateCrash") == 0) {
+		} else if (strcmp(_argv[1], "com.apple.ReportCrash.SimulateCrash") == 0) {
 			isDaemon = YES;
 #ifdef DEBUG
 			NSLog(@"RocketBootstrap: Initializing ReportCrash using XPC");

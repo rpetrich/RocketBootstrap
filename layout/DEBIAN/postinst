@@ -1,4 +1,5 @@
 #!/bin/sh
+chown root:wheel /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist
 launchctl load /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist || true
 launchctl stop com.apple.ReportCrash.SimulateCrash || true
 mv /System/Library/LaunchDaemons{BAK,}/com.apple.ReportCrash.SimulateCrash.plist 2> /dev/null || true

@@ -2,15 +2,20 @@ LIBRARY_NAME = librocketbootstrap
 librocketbootstrap_FILES = Tweak.x Shims.x
 librocketbootstrap_LIBRARIES = substrate
 librocketbootstrap_FRAMEWORKS = Foundation
+librocketbootstrap_USE_MODULES = 0
 
 TOOL_NAME = rocketd _rocketd_reenable
 rocketd_FILES = rocketd.c
 rocketd_CFLAGS = -fblocks
 rocketd_FRAMEWORKS = CoreFoundation
 rocketd_INSTALL_PATH = /usr/libexec
+rocketd_USE_MODULES = 0
+rocketd_CODESIGN_FLAGS = -Sentitlements.xml
 
 _rocketd_reenable_FILES = rocketd_reenable.c
 _rocketd_reenable_INSTALL_PATH = /usr/libexec
+_rocketd_reenable_USE_MODULES = 0
+_rocketd_reenable_CODESIGN_FLAGS = -Sentitlements.xml
 
 ADDITIONAL_CFLAGS = -std=c99 -Ioverlayheaders
 
