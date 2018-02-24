@@ -181,7 +181,6 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 	// Ask rocketd to unlock it for us
 	int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, kRocketBootstrapUnlockService);
 	if (sandbox_result) {
-		[pool drain];
 		return sandbox_result;
 	}
 	return LMConnectionSendOneWay(&connection, 0, service_name, strlen(service_name));
