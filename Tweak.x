@@ -2,6 +2,8 @@
 #undef __IOS_PROHIBITED
 #define __IOS_PROHIBITED
 
+#include <spawn.h>
+
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 #define LIGHTMESSAGING_TIMEOUT 300
 #import "LightMessaging/LightMessaging.h"
@@ -410,7 +412,11 @@ static void observe_rocketd(void)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wavailability"
 #endif
-		system("/usr/libexec/_rocketd_reenable");
+		pid_t pid;
+		char *const argv[] = { "/usr/libexec/_rocketd_reenable", NULL };
+		if (posix_spawn(&pid, "/usr/libexec/_rocketd_reenable", NULL, NULL, argv, NULL) == 0) {
+			waitpid(pid, NULL, 0);
+		}
 #if __clang__
 #pragma clang diagnostic pop
 #endif

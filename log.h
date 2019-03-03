@@ -2,6 +2,7 @@
 
 // Tiny shim to convert NSLog to public os_log statements on iOS 10
 #ifdef __clang__
+#if __has_include(<os/log.h>)
 #include <os/log.h>
 #define NSLog(...) do { \
 	if (kCFCoreFoundationVersionNumber > 1299.0) { \
@@ -12,4 +13,5 @@
 		NSLog(__VA_ARGS__); \
 	} \
 } while(0)
+#endif
 #endif

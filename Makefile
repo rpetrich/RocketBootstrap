@@ -21,6 +21,7 @@ ADDITIONAL_CFLAGS = -std=c99 -Ioverlayheaders
 
 # Support targeting 3.0 in packaged builds, but allow testing packages/builds to be missing support for old iOS versions
 LEGACY_XCODE_PATH ?= /Applications/Xcode_Legacy.app
+CLASSIC_XCODE_PATH ?= /Volumes/Xcode/Xcode.app
 
 ifeq ($(wildcard $(LEGACY_XCODE_PATH)/.*),)
 IPHONE_ARCHS = armv7 armv7s arm64
@@ -38,6 +39,8 @@ TARGET_IPHONEOS_DEPLOYMENT_VERSION = 4.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv6 = 3.0
 THEOS_PLATFORM_SDK_ROOT_armv6 = $(LEGACY_XCODE_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_armv7 = $(CLASSIC_XCODE_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_armv7s = $(CLASSIC_XCODE_PATH)/Contents/Developer
 endif
 
 include framework/makefiles/common.mk

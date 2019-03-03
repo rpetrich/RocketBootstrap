@@ -128,6 +128,11 @@ void rocketbootstrap_distributedmessagingcenter_apply(CPDistributedMessagingCent
 
 #ifdef __clang__
 
+#ifndef __IPHONE_9_0
+#define __IPHONE_9_0 90000
+#define __AVAILABILITY_INTERNAL__IPHONE_9_0
+#endif
+
 #include <xpc/xpc.h>
 
 static xpc_endpoint_t _xpc_endpoint_create(mach_port_t port)
