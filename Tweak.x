@@ -40,11 +40,28 @@ extern const char ***_NSGetArgv(void);
 
 static BOOL isDaemon;
 
+static BOOL fill_redirected_name(char new_name[BOOTSTRAP_MAX_NAME_LEN], const name_t old_name) {
+	size_t length = strlen(old_name);
+	if (length > 128 - 8) {
+		return NO;
+	}
+	memcpy(new_name, "cy:rbs:", 7);
+	memcpy(new_name + 7, old_name, length + 1);
+	return YES;
+}
+
 static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const name_t service_name, mach_port_t *sp, mach_msg_timeout_t timeout)
 {
 #ifdef DEBUG
 	NSLog(@"RocketBootstrap: rocketbootstrap_look_up(%llu, %s, %p)", (unsigned long long)bp, service_name, sp);
 #endif
+	if (rocketbootstrap_uses_name_redirection()) {
+		char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
+		if (!fill_redirected_name(redirected_name, service_name)) {
+			return 1;
+		}
+		return bootstrap_look_up(bp, redirected_name, sp);
+	}
 	if (rocketbootstrap_is_passthrough() || isDaemon) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
 			int sandbox_result = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
@@ -160,6 +177,48 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 #endif
 	if (rocketbootstrap_is_passthrough())
 		return 0;
+	if (rocketbootstrap_uses_name_redirection()) {
+		char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
+		if (!fill_redirected_name(redirected_name, service_name)) {
+			return 1;
+		}
+		mach_port_t bootstrap = MACH_PORT_NULL;
+		task_get_bootstrap_port(mach_task_self(), &bootstrap);
+		mach_port_t service;
+		kern_return_t err = bootstrap_look_up(bootstrap, service_name, &service);
+		if (err != 0) {
+			// If the current process is permitted to register for this port, assume it's about to
+			int sandbox_result = sandbox_check(getpid(), "mach-register", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
+			if (sandbox_result) {
+				return sandbox_result;
+			}
+			char *copied_service_name = strdup(service_name);
+			CFRunLoopRef runLoop = CFRunLoopGetCurrent();
+			CFRunLoopPerformBlock(runLoop, kCFRunLoopCommonModes, ^{
+				mach_port_t bootstrap = MACH_PORT_NULL;
+				task_get_bootstrap_port(mach_task_self(), &bootstrap);
+				mach_port_t service;
+				kern_return_t err = bootstrap_look_up(bootstrap, copied_service_name, &service);
+				if (err != 0) {
+					char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
+					fill_redirected_name(redirected_name, copied_service_name);
+					err = bootstrap_register(bootstrap, redirected_name, service);
+					if (err != 0) {
+						mach_port_deallocate(mach_task_self(), service);
+					}
+				}
+				free(copied_service_name);
+			});
+			CFRunLoopWakeUp(runLoop);
+			return 0;
+		}
+		err = bootstrap_register(bootstrap, redirected_name, service);
+		if (err != 0) {
+			mach_port_deallocate(mach_task_self(), service);
+			return err;
+		}
+		return 0;
+	}
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSString *serviceNameString = [NSString stringWithUTF8String:service_name];
 	unfair_lock_lock(&namesLock);
@@ -191,6 +250,13 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 kern_return_t rocketbootstrap_register(mach_port_t bp, name_t service_name, mach_port_t sp)
 {
+	if (rocketbootstrap_uses_name_redirection()) {
+		char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
+		if (!fill_redirected_name(redirected_name, service_name)) {
+			return 1;
+		}
+		return bootstrap_register(bp, redirected_name, sp);
+	}
 	kern_return_t err = rocketbootstrap_unlock(service_name);
 	if (err)
 		return err;
@@ -488,6 +554,9 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 %ctor
 {
 	%init();
+	if (rocketbootstrap_uses_name_redirection()) {
+		return;
+	}
 	// Attach rockets when in the com.apple.ReportCrash.SimulateCrash job
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
 	const char **_argv = *_NSGetArgv();

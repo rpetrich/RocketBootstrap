@@ -100,13 +100,13 @@ static bool has_hooked_messaging_center;
 
 - (void)runServerOnCurrentThreadProtectedByEntitlement:(id)entitlement
 {
+	%orig();
 	if (objc_getAssociatedObject(self, &has_hooked_messaging_center)) {
 		NSString **_centerName = CHIvarRef(self, _centerName, NSString *);
 		if (_centerName && *_centerName) {
 			rocketbootstrap_unlock([*_centerName UTF8String]);
 		}
 	}
-	%orig();
 }
 
 %end
@@ -177,12 +177,9 @@ xpc_connection_t rocketbootstrap_xpc_connection_create(const char *name, dispatc
 		return NULL;
 	}
 	if (flags & XPC_CONNECTION_MACH_SERVICE_LISTENER) {
-		if (rocketbootstrap_unlock(name) != 0) {
-			return NULL;
-		}
 		xpc_connection_t result = xpc_connection_create(NULL, targetq);
 		mach_port_t port = _xpc_connection_copy_listener_port(result);
-		if (bootstrap_register(bootstrap, (char *)name, port) != 0) {
+		if (rocketbootstrap_register(bootstrap, (char *)name, port) != 0) {
 			xpc_release(result);
 			return NULL;
 		}

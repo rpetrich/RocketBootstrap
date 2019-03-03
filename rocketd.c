@@ -59,6 +59,9 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 
 int main(int argc, char *argv[])
 {
+	if (rocketbootstrap_uses_name_redirection() || rocketbootstrap_is_passthrough()) {
+		return 0;
+	}
 	allowedNames = CFSetCreateMutable(kCFAllocatorDefault, 0, &kCFTypeSetCallBacks);
 	LMCheckInService(connection.serverName, CFRunLoopGetCurrent(), machPortCallback, NULL);
 	notify_post("com.rpetrich.rocketd.started");
