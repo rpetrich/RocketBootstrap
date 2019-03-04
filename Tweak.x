@@ -199,7 +199,7 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 				task_get_bootstrap_port(mach_task_self(), &bootstrap);
 				mach_port_t service;
 				kern_return_t err = bootstrap_look_up(bootstrap, copied_service_name, &service);
-				if (err != 0) {
+				if (err == 0) {
 					char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
 					fill_redirected_name(redirected_name, copied_service_name);
 					err = bootstrap_register(bootstrap, redirected_name, service);
