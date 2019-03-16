@@ -20,27 +20,35 @@ _rocketd_reenable_CODESIGN_FLAGS = -Sentitlements.xml
 ADDITIONAL_CFLAGS = -std=c99 -Ioverlayheaders
 
 # Support targeting 3.0 in packaged builds, but allow testing packages/builds to be missing support for old iOS versions
-LEGACY_XCODE_PATH ?= /Applications/Xcode_Legacy.app
-CLASSIC_XCODE_PATH ?= /Volumes/Xcode/Xcode.app
+XCODE4_PATH ?= /Applications/Xcode_Legacy.app
+XCODE6_PATH ?= /Volumes/Xcode/Xcode.app
+XCODE9_PATH ?= /Volumes/Xcode_9.4.1/Xcode.app
 
-ifeq ($(wildcard $(LEGACY_XCODE_PATH)/.*),)
+ifeq ($(wildcard $(XCODE4_PATH)/.*),)
+ADDITIONAL_CFLAGS += -Idefaultheaders
 IPHONE_ARCHS = armv7 armv7s arm64
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 8.4
 ifeq ($(FINALPACKAGE),1)
 $(error Building final package requires a legacy Xcode install!)
 endif
 else
+armv6_CFLAGS += -Ifullheaders
+armv7_CFLAGS += -Ifullheaders
+armv7s_CFLAGS += -Ifullheaders
+arm64_CFLAGS += -Idefaultheaders
 rocketd_IPHONE_ARCHS = armv6 arm64
 _rocketd_reenable_IPHONE_ARCHS = armv6 arm64
 IPHONE_ARCHS = armv6 armv7 armv7s arm64
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = 8.4
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 4.0
-TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv6 = 3.0
-THEOS_PLATFORM_SDK_ROOT_armv6 = $(LEGACY_XCODE_PATH)/Contents/Developer
-THEOS_PLATFORM_SDK_ROOT_armv7 = $(CLASSIC_XCODE_PATH)/Contents/Developer
-THEOS_PLATFORM_SDK_ROOT_armv7s = $(CLASSIC_XCODE_PATH)/Contents/Developer
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7 = 4.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7s = 6.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
+THEOS_PLATFORM_SDK_ROOT_armv6 = $(XCODE4_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_armv7 = $(XCODE6_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_armv7s = $(XCODE6_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT = $(XCODE9_PATH)/Contents/Developer
 endif
 
 include framework/makefiles/common.mk
