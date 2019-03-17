@@ -1,4 +1,5 @@
 #import <CoreFoundation/CoreFoundation.h>
+#import <dlfcn.h>
 
 #import "rocketbootstrap.h"
 
@@ -36,7 +37,15 @@ static inline bool rocketbootstrap_is_passthrough(void)
 __attribute__((unused))
 static inline bool rocketbootstrap_uses_name_redirection(void)
 {
-	return kCFCoreFoundationVersionNumber >= 1556.00;
+	if (kCFCoreFoundationVersionNumber >= 1556.00) {
+		static int state;
+		int currentState = state;
+		if (currentState == 0) {
+			currentState = state = dlsym(RTLD_DEFAULT, "substitute_hook_functions") ? 1 : 2;
+		}
+		return currentState - 1;
+	}
+	return false;
 }
 
 kern_return_t _rocketbootstrap_is_unlocked(const name_t service_name); // Errors if not in a privileged process such as SpringBoard or backboardd
