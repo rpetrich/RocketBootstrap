@@ -26,7 +26,7 @@ XCODE9_PATH ?= /Volumes/Xcode_9.4.1/Xcode.app
 
 ifeq ($(wildcard $(XCODE4_PATH)/.*),)
 ADDITIONAL_CFLAGS += -Idefaultheaders
-IPHONE_ARCHS = armv7 armv7s arm64
+IPHONE_ARCHS = armv7 armv7s arm64 arm64e
 TARGET_IPHONEOS_DEPLOYMENT_VERSION = 8.4
 ifeq ($(FINALPACKAGE),1)
 $(error Building final package requires a legacy Xcode install!)
@@ -36,19 +36,22 @@ armv6_CFLAGS += -Ifullheaders
 armv7_CFLAGS += -Ifullheaders
 armv7s_CFLAGS += -Ifullheaders
 arm64_CFLAGS += -Idefaultheaders
+arm64e_CFLAGS += -Idefaultheaders
 rocketd_IPHONE_ARCHS = armv6 arm64
 _rocketd_reenable_IPHONE_ARCHS = armv6 arm64
-IPHONE_ARCHS = armv6 armv7 armv7s arm64
+IPHONE_ARCHS = armv6 armv7 armv7s arm64 arm64e
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = 8.4
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv6 = 3.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7 = 4.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7s = 6.0
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64e = 12.0
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 9.0
 THEOS_PLATFORM_SDK_ROOT_armv6 = $(XCODE4_PATH)/Contents/Developer
 THEOS_PLATFORM_SDK_ROOT_armv7 = $(XCODE6_PATH)/Contents/Developer
 THEOS_PLATFORM_SDK_ROOT_armv7s = $(XCODE6_PATH)/Contents/Developer
-THEOS_PLATFORM_SDK_ROOT = $(XCODE9_PATH)/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_arm64 = $(XCODE9_PATH)/Contents/Developer
 endif
 
 include framework/makefiles/common.mk
