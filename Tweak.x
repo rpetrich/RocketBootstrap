@@ -211,13 +211,13 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 			});
 			CFRunLoopWakeUp(runLoop);
 			return 0;
+		} else {
+			err = bootstrap_register(bootstrap, redirected_name, service);
+			if (err != 0) {
+				mach_port_deallocate(mach_task_self(), service);
+				return err;
+			}
 		}
-		err = bootstrap_register(bootstrap, redirected_name, service);
-		if (err != 0) {
-			mach_port_deallocate(mach_task_self(), service);
-			return err;
-		}
-		return 0;
 	}
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSString *serviceNameString = [NSString stringWithUTF8String:service_name];
