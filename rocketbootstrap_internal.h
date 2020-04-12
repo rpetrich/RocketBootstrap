@@ -41,7 +41,8 @@ static inline bool rocketbootstrap_uses_name_redirection(void)
 		static int state;
 		int currentState = state;
 		if (currentState == 0) {
-			currentState = state = dlsym(RTLD_DEFAULT, "substitute_hook_functions") ? 1 : 2;
+			int check = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, "cy:rbs");
+			currentState = check == 0 ? 1 : 2;
 		}
 		return currentState - 1;
 	}

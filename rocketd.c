@@ -59,7 +59,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 
 int main(int argc, char *argv[])
 {
-	if (rocketbootstrap_uses_name_redirection() || rocketbootstrap_is_passthrough()) {
+	if (rocketbootstrap_is_passthrough()) {
 		return 0;
 	}
 	allowedNames = CFSetCreateMutable(kCFAllocatorDefault, 0, &kCFTypeSetCallBacks);
