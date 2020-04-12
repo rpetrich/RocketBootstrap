@@ -60,7 +60,10 @@ static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const 
 		if (!fill_redirected_name(redirected_name, service_name)) {
 			return 1;
 		}
-		return bootstrap_look_up(bp, redirected_name, sp);
+		kern_return_t result = bootstrap_look_up(bp, redirected_name, sp);
+		if (result == 0) {
+			return 0;
+		}
 	}
 	if (rocketbootstrap_is_passthrough() || isDaemon) {
 		if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_5_0) {
@@ -554,9 +557,6 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 %ctor
 {
 	%init();
-	if (rocketbootstrap_uses_name_redirection()) {
-		return;
-	}
 	// Attach rockets when in the com.apple.ReportCrash.SimulateCrash job
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
 	const char **_argv = *_NSGetArgv();
