@@ -428,6 +428,10 @@ static pid_t pid_of_process(const char *process_name)
 	struct kinfo_proc * newprocess = NULL;
 
 	do {
+		if (size == 0){
+			st = sysctl(mib, miblen, NULL, &size, NULL, 0);
+		}
+
 		size += size / 10;
 		newprocess = (struct kinfo_proc *)realloc(process, size);
 		
