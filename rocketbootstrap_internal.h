@@ -1,4 +1,5 @@
 #import <CoreFoundation/CoreFoundation.h>
+#import <dlfcn.h>
 
 #import "rocketbootstrap.h"
 
@@ -31,6 +32,21 @@ __attribute__((unused))
 static inline bool rocketbootstrap_is_passthrough(void)
 {
 	return kCFCoreFoundationVersionNumber < 800.0;
+}
+
+__attribute__((unused))
+static inline bool rocketbootstrap_uses_name_redirection(void)
+{
+	if (kCFCoreFoundationVersionNumber >= 1556.00) {
+		static int state;
+		int currentState = state;
+		if (currentState == 0) {
+			int check = sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, "cy:rbs");
+			currentState = check == 0 ? 1 : 2;
+		}
+		return currentState - 1;
+	}
+	return false;
 }
 
 kern_return_t _rocketbootstrap_is_unlocked(const name_t service_name); // Errors if not in a privileged process such as SpringBoard or backboardd

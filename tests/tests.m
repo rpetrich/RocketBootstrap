@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#include "log.h"
 
 #import "rocketbootstrap.h"
 
