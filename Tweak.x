@@ -1,8 +1,8 @@
-#include <Availability.h>
+#import <Availability.h>
 #undef __IOS_PROHIBITED
 #define __IOS_PROHIBITED
 
-#include <spawn.h>
+#import <spawn.h>
 
 #define LIGHTMESSAGING_USE_ROCKETBOOTSTRAP 0
 #define LIGHTMESSAGING_TIMEOUT 300
@@ -14,16 +14,15 @@
 
 #ifndef __APPLE_API_PRIVATE
 #define __APPLE_API_PRIVATE
-#include "sandbox.h"
+#import "sandbox.h"
 #undef __APPLE_API_PRIVATE
 #else
-#include "sandbox.h"
+#import "sandbox.h"
 #endif
 
 #import <mach/mach.h>
 #import <substrate.h>
 #import <libkern/OSAtomic.h>
-//#import <launch.h>
 #import <CoreFoundation/CFUserNotification.h>
 #import <libkern/OSCacheControl.h>
 #import <sys/sysctl.h>
@@ -38,7 +37,7 @@ extern const char ***_NSGetArgv(void);
 #define kUserAppsPath "/var/mobile/Applications/"
 #define kSystemAppsPath "/Applications/"
 
-static BOOL isDaemon;
+static BOOL isDaemon = NO;
 
 static BOOL fill_redirected_name(char new_name[BOOTSTRAP_MAX_NAME_LEN], const name_t old_name) {
 	size_t length = strlen(old_name);
@@ -86,12 +85,12 @@ static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const 
 		if (!allowed)
 			return 1;
 	}
-	// Ask our service running inside of the com.apple.ReportCrash.SimulateCrash job
+	// Ask our service running inside of the com.apple.mobilegestalt.xpc job
 	mach_port_t servicesPort = MACH_PORT_NULL;
-	kern_return_t err = bootstrap_look_up(bp, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
+	kern_return_t err = bootstrap_look_up(bp, "com.apple.mobilegestalt.xpc", &servicesPort);
 	if (err) {
 #ifdef DEBUG
-		NSLog(@"RocketBootstrap: = %lld (failed to lookup com.apple.ReportCrash.SimulateCrash)", (unsigned long long)err);
+		NSLog(@"RocketBootstrap: = %lld (failed to lookup com.apple.mobilegestalt.xpc)", (unsigned long long)err);
 #endif
 		return err;
 	}
@@ -103,7 +102,7 @@ static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const 
 #ifdef DEBUG
 		NSLog(@"RocketBootstrap: = %lld (failed to allocate port)", (unsigned long long)err);
 #endif
-		mach_port_deallocate(selfTask, servicesPort);
+		mach_port_mod_refs(selfTask, servicesPort, MACH_PORT_RIGHT_SEND, -1);
 		return err;
 	}
 	// Send message
@@ -146,8 +145,8 @@ static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const 
 		}
 	}
 	// Cleanup
-	mach_port_deallocate(selfTask, servicesPort);
-	mach_port_deallocate(selfTask, replyPort);
+	mach_port_mod_refs(selfTask, servicesPort, MACH_PORT_RIGHT_SEND, -1);
+	mach_port_mod_refs(selfTask, replyPort, MACH_PORT_RIGHT_RECEIVE, -1);
 	return err;
 }
 
@@ -185,10 +184,11 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 		if (!fill_redirected_name(redirected_name, service_name)) {
 			return 1;
 		}
+		mach_port_t selfPort = mach_task_self();
 		mach_port_t bootstrap = MACH_PORT_NULL;
-		task_get_bootstrap_port(mach_task_self(), &bootstrap);
-		mach_port_t service;
-		kern_return_t err = bootstrap_look_up(bootstrap, service_name, &service);
+		task_get_bootstrap_port(selfPort, &bootstrap);
+		mach_port_t servicePort;
+		kern_return_t err = bootstrap_look_up(bootstrap, service_name, &servicePort);
 		if (err != 0) {
 			// If the current process is permitted to register for this port, assume it's about to
 			int sandbox_result = sandbox_check(getpid(), "mach-register", SANDBOX_FILTER_LOCAL_NAME | SANDBOX_CHECK_NO_REPORT, service_name);
@@ -198,26 +198,26 @@ kern_return_t rocketbootstrap_unlock(const name_t service_name)
 			char *copied_service_name = strdup(service_name);
 			CFRunLoopRef runLoop = CFRunLoopGetCurrent();
 			CFRunLoopPerformBlock(runLoop, kCFRunLoopCommonModes, ^{
+				mach_port_t selfPort1 = mach_task_self();
 				mach_port_t bootstrap = MACH_PORT_NULL;
-				task_get_bootstrap_port(mach_task_self(), &bootstrap);
-				mach_port_t service;
-				kern_return_t err = bootstrap_look_up(bootstrap, copied_service_name, &service);
+				task_get_bootstrap_port(selfPort1, &bootstrap);
+				mach_port_t servicePort1;
+				kern_return_t err = bootstrap_look_up(bootstrap, copied_service_name, &servicePort1);
 				if (err == 0) {
 					char redirected_name[BOOTSTRAP_MAX_NAME_LEN];
 					fill_redirected_name(redirected_name, copied_service_name);
-					err = bootstrap_register(bootstrap, redirected_name, service);
-					if (err != 0) {
-						mach_port_deallocate(mach_task_self(), service);
-					}
+					err = bootstrap_register(bootstrap, redirected_name, servicePort1);
+					if (err != 0)
+						mach_port_mod_refs(selfPort1, servicePort1, MACH_PORT_RIGHT_SEND, -1);
 				}
 				free(copied_service_name);
 			});
 			CFRunLoopWakeUp(runLoop);
 			return 0;
 		} else {
-			err = bootstrap_register(bootstrap, redirected_name, service);
+			err = bootstrap_register(bootstrap, redirected_name, servicePort);
 			if (err != 0) {
-				mach_port_deallocate(mach_task_self(), service);
+				mach_port_mod_refs(selfPort, servicePort, MACH_PORT_RIGHT_SEND, -1);
 				return err;
 			}
 		}
@@ -340,7 +340,7 @@ static boolean_t new_demux(mach_msg_header_t *request, mach_msg_header_t *reply)
 #ifdef DEBUG
 	NSLog(@"RocketBootstrap: new_demux(%lld)", (long long)request->msgh_id);
 #endif
-	// Highjack ROCKETBOOTSTRAP_LOOKUP_ID from the com.apple.ReportCrash.SimulateCrash demuxer
+	// Highjack ROCKETBOOTSTRAP_LOOKUP_ID from the com.apple.mobilegestalt.xpc demuxer
 	if (request->msgh_id == ROCKETBOOTSTRAP_LOOKUP_ID) {
 		continue_server_once = true;
 		kern_return_t err = handle_bootstrap_lookup_msg(request);
@@ -352,12 +352,13 @@ static boolean_t new_demux(mach_msg_header_t *request, mach_msg_header_t *reply)
 	return server_once_demux_orig(request, reply);
 }
 
+__used
 static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_header_t *, mach_msg_header_t *), mach_msg_size_t max_size, mach_port_t rcv_name, mach_msg_options_t options)
 {
 #ifdef DEBUG
 	NSLog(@"RocketBootstrap: mach_msg_server_once(%p, %llu, %llu, 0x%llx)", demux, (unsigned long long)max_size, (unsigned long long)rcv_name, (long long)options);
 #endif
-	// Highjack com.apple.ReportCrash.SimulateCrash's use of mach_msg_server_once
+	// Highjack com.apple.mobilegestalt.xpc's use of mach_msg_server_once
 	unfair_lock_lock(&server_once_lock);
 	if (!server_once_demux_orig) {
 		server_once_demux_orig = demux;
@@ -380,15 +381,19 @@ static mach_msg_return_t $mach_msg_server_once(boolean_t (*demux)(mach_msg_heade
 
 #ifdef __clang__
 
+__used
 static void *interceptedConnection;
 
+__used
 static void *(*_xpc_connection_create_mach_service)(const char *name, dispatch_queue_t targetq, uint64_t flags);
+
+__used
 static void *$xpc_connection_create_mach_service(const char *name, dispatch_queue_t targetq, uint64_t flags)
 {
 #ifdef DEBUG
 	NSLog(@"RocketBootstrap: xpc_connection_create_mach_service(%s, %p, %lld)", name, targetq, (unsigned long long)flags);
 #endif
-	if (name && strcmp(name, "com.apple.ReportCrash.SimulateCrash") == 0) {
+	if (name && strcmp(name, "com.apple.mobilegestalt.xpc") == 0) {
 		void *result = _xpc_connection_create_mach_service(name, targetq, flags);
 		interceptedConnection = result;
 		return result;
@@ -396,13 +401,16 @@ static void *$xpc_connection_create_mach_service(const char *name, dispatch_queu
 	return _xpc_connection_create_mach_service(name, targetq, flags);
 }
 
+__used
 static void (*__xpc_connection_mach_event)(void *context, dispatch_mach_reason_t reason, dispatch_mach_msg_t message, mach_error_t error);
+
+__used
 static void $_xpc_connection_mach_event(void *context, dispatch_mach_reason_t reason, dispatch_mach_msg_t message, mach_error_t error)
 {
 #ifdef DEBUG
 	NSLog(@"RocketBootstrap: _xpc_connection_mach_event(%p, %lu, %p, 0x%x)", context, reason, message, error);
 #endif
-	// Highjack ROCKETBOOTSTRAP_LOOKUP_ID from the com.apple.ReportCrash.SimulateCrash XPC service
+	// Highjack ROCKETBOOTSTRAP_LOOKUP_ID from the com.apple.mobilegestalt.xpc XPC service
 	if ((reason == DISPATCH_MACH_MESSAGE_RECEIVED) && (context == interceptedConnection)) {
 		size_t size;
 		mach_msg_header_t *header = dispatch_mach_msg_get_msg(message, &size);
@@ -428,7 +436,7 @@ static pid_t pid_of_process(const char *process_name)
 	struct kinfo_proc * newprocess = NULL;
 
 	do {
-		if (size == 0){
+		if (size == 0) {
 			st = sysctl(mib, miblen, NULL, &size, NULL, 0);
 		}
 
@@ -515,8 +523,7 @@ static void observe_rocketd(void)
 			buffer.message.body.msgh_descriptor_count = 0;
 			buffer.message.data.in_line.length = 0;
 			err = mach_msg(&buffer.message.head, MACH_SEND_MSG | MACH_RCV_MSG | _LIGHTMESSAGING_TIMEOUT_FLAGS, size, sizeof(LMResponseBuffer), replyPort, LIGHTMESSAGING_TIMEOUT, MACH_PORT_NULL);
-			if (err) {
-			}
+			if (err) { }
 			// Cleanup
 			mach_port_mod_refs(self, replyPort, MACH_PORT_RIGHT_RECEIVE, -1);
 		}
@@ -558,72 +565,55 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 {
 }
 
+#import "pac_helper.h"
+
 %ctor
 {
 	%init();
-	// Attach rockets when in the com.apple.ReportCrash.SimulateCrash job
+	// Attach rockets when in the com.apple.mobilegestalt.xpc job
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
 	const char **_argv = *_NSGetArgv();
-	if (strcmp(_argv[0], "/System/Library/CoreServices/ReportCrash") == 0 && _argv[1]) {
-		if (strcmp(_argv[1], "-f") == 0) {
-			isDaemon = YES;
+	if (strcmp(_argv[0], "/usr/libexec/MobileGestaltHelper") == 0) {
+		isDaemon = YES;
+// #ifdef DEBUG
+// 		NSLog(@"RocketBootstrap: Initializing %s using mach_msg_server", _argv[0]);
+// #endif
+// 		MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
 #ifdef DEBUG
-			NSLog(@"RocketBootstrap: Initializing ReportCrash using mach_msg_server");
+		NSLog(@"RocketBootstrap: Initializing %s using XPC", _argv[0]);
 #endif
-			MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
-#ifdef __clang__
-		} else if (strcmp(_argv[1], "com.apple.ReportCrash.SimulateCrash") == 0) {
-			isDaemon = YES;
-#ifdef DEBUG
-			NSLog(@"RocketBootstrap: Initializing ReportCrash using XPC");
-#endif
-			MSImageRef libxpc = MSGetImageByName("/usr/lib/system/libxpc.dylib");
-			if (libxpc) {
-				void *xpc_connection_create_mach_service = MSFindSymbol(libxpc, "_xpc_connection_create_mach_service");
-				if (xpc_connection_create_mach_service) {
-					MSHookFunction(xpc_connection_create_mach_service, $xpc_connection_create_mach_service, (void **)&_xpc_connection_create_mach_service);
-				} else {
-#ifdef DEBUG
-					NSLog(@"RocketBootstrap: Could not find xpc_connection_create_mach_service symbol!");
-#endif
-				}
-				void *_xpc_connection_mach_event = MSFindSymbol(libxpc, "__xpc_connection_mach_event");
-				if (_xpc_connection_mach_event) {
-					MSHookFunction(_xpc_connection_mach_event, $_xpc_connection_mach_event, (void **)&__xpc_connection_mach_event);
-				} else {
-#ifdef DEBUG
-					NSLog(@"RocketBootstrap: Could not find _xpc_connection_mach_event symbol!");
-#endif
-				}
+		MSImageRef libxpc = MSGetImageByName("/usr/lib/system/libxpc.dylib");
+		if (libxpc) {
+			void *xpc_connection_create_mach_service = MSFindSymbol(libxpc, "_xpc_connection_create_mach_service");
+			if (xpc_connection_create_mach_service) {
+				MSHookFunction(xpc_connection_create_mach_service, $xpc_connection_create_mach_service, (void **)&_xpc_connection_create_mach_service);
 			} else {
 #ifdef DEBUG
-				NSLog(@"RocketBootstrap: Could not find libxpc.dylib image!");
+				NSLog(@"RocketBootstrap: Could not find xpc_connection_create_mach_service symbol!");
 #endif
 			}
+			void *_xpc_connection_mach_event = MSFindSymbol(libxpc, "__xpc_connection_mach_event");
+			if (!_xpc_connection_mach_event)
+				_xpc_connection_mach_event = make_sym_callable(*((void **)make_sym_readable((void *)libxpc)) + 0x10530);
+			if (_xpc_connection_mach_event) {
+				MSHookFunction(_xpc_connection_mach_event, $_xpc_connection_mach_event, (void **)&__xpc_connection_mach_event);
+			} else {
+#ifdef DEBUG
+				NSLog(@"RocketBootstrap: Could not find _xpc_connection_mach_event symbol!");
 #endif
+			}
 		}
 	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
 #ifdef DEBUG
-		NSLog(@"RocketBootstrap: Initializing SpringBoard");
+		NSLog(@"RocketBootstrap: Initializing %s", argv[0]);
 #endif
-		if (kCFCoreFoundationVersionNumber < 847.20) {
-			return;
-		}
-		// Sanity check on the SimulateCrash service
+		if (kCFCoreFoundationVersionNumber < 847.20) return;
+		// Sanity check on the MobileGestaltHelper service
 		mach_port_t bootstrap = MACH_PORT_NULL;
 		mach_port_t self = mach_task_self();
 		task_get_bootstrap_port(self, &bootstrap);
 		mach_port_t servicesPort = MACH_PORT_NULL;
-		kern_return_t err = bootstrap_look_up(bootstrap, "com.apple.ReportCrash.SimulateCrash", &servicesPort);
-		//bool has_simulate_crash;
-		if (err) {
-			//has_simulate_crash = false;
-		} else {
-			mach_port_mod_refs(self, servicesPort, MACH_PORT_RIGHT_SEND, -1);
-			//has_simulate_crash = true;
-			//servicesPort = MACH_PORT_NULL;
-			//err = bootstrap_look_up(bootstrap, "com.rpetrich.rocketbootstrapd", &servicesPort);
-		}
+		kern_return_t err = bootstrap_look_up(bootstrap, "com.apple.mobilegestalt.xpc", &servicesPort);
 		if (err == 0) {
 			mach_port_mod_refs(self, servicesPort, MACH_PORT_RIGHT_SEND, -1);
 			observe_rocketd();
@@ -633,17 +623,12 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 				kCFUserNotificationAlertMessageKey,
 				kCFUserNotificationDefaultButtonTitleKey,
 			};
-			const CFTypeRef valuesCrash[] = {
+			const CFTypeRef valuesList[] = {
 				CFSTR("System files missing!"),
-				CFSTR("RocketBootstrap has detected that your SimulateCrash crash reporting daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
+				CFSTR("RocketBootstrap has detected that your MobileGestaltHelper daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
 				CFSTR("OK"),
 			};
-			/*const CFTypeRef valuesRocket[] = {
-				CFSTR("System files missing!"),
-				CFSTR("RocketBootstrap has detected that your rocketbootstrap daemon is missing or disabled.\nThis daemon is required for proper operation of packages that depend on RocketBootstrap."),
-				CFSTR("OK"),
-			};*/
-			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, /*has_simulate_crash ? (const void **)valuesRocket :*/ (const void **)valuesCrash, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+			CFDictionaryRef dict = CFDictionaryCreate(kCFAllocatorDefault, (const void **)keys, (const void **)valuesList, sizeof(keys) / sizeof(*keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 			SInt32 err = 0;
 			CFUserNotificationRef notification = CFUserNotificationCreate(kCFAllocatorDefault, 0.0, kCFUserNotificationPlainAlertLevel, &err, dict);
 			CFRunLoopSourceRef runLoopSource = CFUserNotificationCreateRunLoopSource(kCFAllocatorDefault, notification, SanityCheckNotificationCallback, 0);

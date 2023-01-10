@@ -1,3 +1,11 @@
 #!/bin/sh
-launchctl unload /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist || true
-launchctl stop com.apple.ReportCrash.SimulateCrash || true
+
+JB_PREFIX=""
+if [ -e /var/jb ]; then
+  JB_PREFIX="/var/jb"
+fi
+
+launchctl unload -w "$JB_PREFIX/Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist" > /dev/null 2>&1 || true
+launchctl kill 9 system/com.apple.mobilegestalt.xpc > /dev/null 2>&1 || true
+
+exit 0

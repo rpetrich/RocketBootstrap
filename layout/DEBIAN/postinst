@@ -1,8 +1,23 @@
 #!/bin/sh
-chown root:wheel /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist
-launchctl load /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist || true
-launchctl stop com.apple.ReportCrash.SimulateCrash || true
-mv /System/Library/LaunchDaemons{BAK,}/com.apple.ReportCrash.SimulateCrash.plist 2> /dev/null || true
-launchctl load /System/Library/LaunchDaemons/com.apple.ReportCrash.SimulateCrash.plist 2> /dev/null || true
-chown root:wheel /usr/libexec/_rocketd_reenable
-chmod +s /usr/libexec/_rocketd_reenable
+
+declare -a cydia
+cydia=($CYDIA)
+
+JB_PREFIX=""
+if [ -e /var/jb ]; then
+  JB_PREFIX="/var/jb"
+fi
+
+chown root:wheel "$JB_PREFIX/Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist" > /dev/null 2>&1 || true
+launchctl load -w "$JB_PREFIX/Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist" > /dev/null 2>&1 || true
+launchctl kill 9 system/com.apple.mobilegestalt.xpc > /dev/null 2>&1 || true
+mv /System/Library/LaunchDaemons{BAK,}/com.apple.mobilegestalt.xpc.plist > /dev/null 2>&1 || true
+launchctl load -w /System/Library/LaunchDaemons/com.apple.mobilegestalt.xpc.plist > /dev/null 2>&1 || true
+chown root:wheel "$JB_PREFIX/usr/libexec/_rocketd_reenable" > /dev/null 2>&1 || true
+chmod +s "$JB_PREFIX/usr/libexec/_rocketd_reenable" > /dev/null 2>&1 || true
+
+if [[ ${CYDIA+@} ]]; then
+    eval "echo 'finish:restart' >&${cydia[0]}"
+fi
+
+exit 0
