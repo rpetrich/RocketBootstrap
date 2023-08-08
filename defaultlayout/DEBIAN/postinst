@@ -1,8 +1,5 @@
 #!/bin/sh
 
-declare -a cydia
-cydia=($CYDIA)
-
 JB_PREFIX=""
 if [ -e /var/jb ]; then
   JB_PREFIX="/var/jb"
@@ -15,9 +12,5 @@ mv /System/Library/LaunchDaemons{BAK,}/com.apple.mobilegestalt.xpc.plist > /dev/
 launchctl load -w /System/Library/LaunchDaemons/com.apple.mobilegestalt.xpc.plist > /dev/null 2>&1 || true
 chown root:wheel "$JB_PREFIX/usr/libexec/_rocketd_reenable" > /dev/null 2>&1 || true
 chmod +s "$JB_PREFIX/usr/libexec/_rocketd_reenable" > /dev/null 2>&1 || true
-
-if [[ ${CYDIA+@} ]]; then
-    eval "echo 'finish:restart' >&${cydia[0]}"
-fi
 
 exit 0
