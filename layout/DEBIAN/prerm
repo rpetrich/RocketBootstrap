@@ -1,3 +1,0 @@
-#!/bin/sh
-launchctl unload /Library/LaunchDaemons/com.rpetrich.rocketbootstrapd.plist || true
-launchctl stop com.apple.ReportCrash.SimulateCrash || true

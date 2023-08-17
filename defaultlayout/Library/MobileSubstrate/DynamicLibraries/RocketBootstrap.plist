@@ -4,9 +4,13 @@
 <dict>
 	<key>Filter</key>
 	<dict>
+		<key>Bundles</key>
+		<array>
+			<string>com.apple.springboard</string>
+		</array>
 		<key>Executables</key>
 		<array>
-			<string>ReportCrash</string>
+			<string>MobileGestaltHelper</string>
 		</array>
 		<key>CoreFoundationVersion</key>
 		<array>

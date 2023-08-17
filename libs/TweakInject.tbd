@@ -1,0 +1,20 @@
+---
+archs:           [ arm64, arm64e ]
+platform:        ios
+install-name:    /usr/lib/TweakInject.dylib
+current-version: 0.0
+compatibility-version: 0.0
+exports:         
+  - archs:           [ arm64, arm64e ]
+    symbols:         [ _LHPatchMemory, _SpringBoardSigHandler, _calljailbreakd, 
+                       _calljailbreakdforexec, _callpaccrypto_fixup_hook, 
+                       _close_xpc_client, _closejailbreakfd, _connection, 
+                       _file_exist, _fixfont, _hook, _hookPacket, _hook_loader, 
+                       _jailbreakd_sock, _launch_root, _log_file, _new_getLoader, 
+                       _old_getLoader, _open_xpc_client, _opensocket, _paccrypto_sock, 
+                       _parseMacho, _pathFromProcessID, _processName, _rpath_to_var, 
+                       _safeMode, _sbinjectGenerateDylibList, _usr_to_var, 
+                       _xpc_attchme, _xpc_fixProc, _xpc_fixProcAndRoot, 
+                       _xpc_fix_dylib, _xpc_ldrestart, _xpc_platform, _xpc_sbrelaod, 
+                       _xpc_sig, _xpcrelease ]
+...
