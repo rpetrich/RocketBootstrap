@@ -21,6 +21,7 @@
 #endif
 
 #import <mach/mach.h>
+#import <mach-o/dyld.h>
 #import <substrate.h>
 #import <libkern/OSAtomic.h>
 #import <CoreFoundation/CFUserNotification.h>
@@ -31,8 +32,45 @@
 #define DISPATCH_MACH_SPI 1
 #import <dispatch/mach_private.h>
 
-extern int *_NSGetArgc(void);
-extern const char ***_NSGetArgv(void);
+#define ROOTLESS_PREFIX "/var/jb"
+
+static const char *RBSExecutablePath(void)
+{
+    static char *executablePath = NULL;
+    if (!executablePath)
+    {
+        uint32_t executablePathSize = 0;
+        _NSGetExecutablePath(NULL, &executablePathSize);
+        executablePath = (char *)calloc(1, executablePathSize);
+        if (0 == _NSGetExecutablePath(executablePath, &executablePathSize))
+        {
+            /* Resolve Symbolic Links */
+            char realExecutablePath[PATH_MAX] = {0};
+            if (realpath(executablePath, realExecutablePath) != NULL)
+            {
+                free(executablePath);
+                executablePath = strdup(realExecutablePath);
+            }
+            
+            /* Supports Procursus */
+            if (strncmp("/private/preboot" "/", executablePath, sizeof("/private/preboot")) == 0)
+            {
+                const char *littlePtr = strstr(executablePath, "/procursus" "/");
+                if (littlePtr != NULL)
+                {
+                    char *suffixPtr = strdup(littlePtr + sizeof("/procursus") - 1);
+                    free(executablePath);
+                    char *markPtr = (char *)calloc(1, strlen(suffixPtr) + sizeof(ROOTLESS_PREFIX));
+                    markPtr = strcat(strcat(markPtr, ROOTLESS_PREFIX), suffixPtr);
+                    free(suffixPtr);
+                    executablePath = markPtr;
+                }
+            }
+        }
+    }
+    
+    return executablePath;
+}
 
 #define kUserAppsPath "/var/mobile/Applications/"
 #define kSystemAppsPath "/Applications/"
@@ -75,12 +113,12 @@ static kern_return_t rocketbootstrap_look_up_with_timeout(mach_port_t bp, const 
 	}
 	// Compatibility mode for Flex, limits it to only the processes in rbs 1.0.1 and earlier
 	if (strcmp(service_name, "FLMessagingCenterSpringboard") == 0) {
-		const char **argv = *_NSGetArgv();
-		size_t arg0len = strlen(argv[0]);
+		const char *executablePath = RBSExecutablePath();
+		size_t arg0len = strlen(executablePath);
 		bool allowed = false;
-		if ((arg0len > sizeof(kUserAppsPath)) && (memcmp(argv[0], kUserAppsPath, sizeof(kUserAppsPath) - 1) == 0))
+		if ((arg0len > sizeof(kUserAppsPath)) && (memcmp(executablePath, kUserAppsPath, sizeof(kUserAppsPath) - 1) == 0))
 			allowed = true;
-		if ((arg0len > sizeof(kSystemAppsPath)) && (memcmp(argv[0], kSystemAppsPath, sizeof(kSystemAppsPath) - 1) == 0))
+		if ((arg0len > sizeof(kSystemAppsPath)) && (memcmp(executablePath, kSystemAppsPath, sizeof(kSystemAppsPath) - 1) == 0))
 			allowed = true;
 		if (!allowed)
 			return 1;
@@ -572,15 +610,15 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 	%init();
 	// Attach rockets when in the com.apple.mobilegestalt.xpc job
 	// (can't check in using the launchd APIs because it hates more than one checkin; this will do)
-	const char **_argv = *_NSGetArgv();
-	if (strcmp(_argv[0], "/usr/libexec/MobileGestaltHelper") == 0) {
+	const char *executablePath = RBSExecutablePath();
+	if (strcmp(executablePath, "/usr/libexec/MobileGestaltHelper") == 0) {
 		isDaemon = YES;
 // #ifdef DEBUG
-// 		NSLog(@"RocketBootstrap: Initializing %s using mach_msg_server", _argv[0]);
+// 		NSLog(@"RocketBootstrap: Initializing %s using mach_msg_server", executablePath);
 // #endif
 // 		MSHookFunction(mach_msg_server_once, $mach_msg_server_once, (void **)&_mach_msg_server_once);
 #ifdef DEBUG
-		NSLog(@"RocketBootstrap: Initializing %s using XPC", _argv[0]);
+		NSLog(@"RocketBootstrap: Initializing %s using XPC", executablePath);
 #endif
 		MSImageRef libxpc = MSGetImageByName("/usr/lib/system/libxpc.dylib");
 		if (libxpc) {
@@ -603,9 +641,9 @@ static void SanityCheckNotificationCallback(CFUserNotificationRef userNotificati
 #endif
 			}
 		}
-	} else if (strcmp(argv[0], "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
+	} else if (strcmp(executablePath, "/System/Library/CoreServices/SpringBoard.app/SpringBoard") == 0) {
 #ifdef DEBUG
-		NSLog(@"RocketBootstrap: Initializing %s", argv[0]);
+		NSLog(@"RocketBootstrap: Initializing %s", executablePath);
 #endif
 		if (kCFCoreFoundationVersionNumber < 847.20) return;
 		// Sanity check on the MobileGestaltHelper service
